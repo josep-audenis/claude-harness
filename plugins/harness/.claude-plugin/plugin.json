@@ -1,0 +1,12 @@
+{
+  "name": "harness",
+  "version": "1.0.0",
+  "description": "Josep's agent harness: Stop gate, Bash gate, session state, device floor, maker/checker agents, briefs and review loop.",
+  "author": {
+    "name": "Josep Audenis",
+    "url": "https://github.com/josep-audenis"
+  },
+  "repository": "https://github.com/josep-audenis/claude-harness",
+  "license": "UNLICENSED",
+  "keywords": ["harness", "hooks", "stop-gate", "workflow"]
+}

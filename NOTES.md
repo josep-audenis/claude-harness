@@ -97,6 +97,17 @@ The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --home 
 - 2026-10-02 **session-state (CTX-5)**: prints nothing unless `progress.md` or `feature_list.json` exists, so repos that aren't harnessed don't get git log noise at every session start. The progress tail is 20 lines; up to 10 open features are listed by id.
 - 2026-10-02 **gate-bash (SEC-5)**: also denies `terraform destroy` and `tofu apply|destroy`. It re-checks scripts passed to `bash -c`, `pwsh -Command`, `cmd /c` and `eval`, and strips `VAR=x`, `sudo` and `env` prefixes. A `+refspec` push counts as a force push. The download-to-shell check ignores quoted text (`echo "curl x | sh"` passes). gcloud: a command is read-only when any positional is `list`, `describe`, `ls`, `info`, `version`, `help`, `get-*`, `describe-*` or `list-*`; anything else is denied, per SPEC.
 - 2026-10-02 **test runner**: `npm test` runs `node test/run.mjs`, which lists `test/*.test.mjs` and passes the files to `node --test`. `node --test test/` and glob arguments behave differently across Node 20/22+ and Windows shells.
+- 2026-10-03 **setup.mjs**: `harness-device.json` is rewritten only when the OS or harness version changes, so a second run is byte-identical (DEV-3). Backups hold only the files a run changes, plus a `manifest.json` recording which files existed. `--undo` restores those, deletes the ones setup created, and renames the backup to `undone-<ts>` so the next `--undo` goes one step further back. An invalid `settings.json` aborts with nothing changed. `--dry-run` doesn't even create `~/.claude`. The CRLF line endings of an existing `CLAUDE.md` are kept.
+- 2026-10-03 **doctor.mjs**:
+  - Rows beyond BUILD §3.2: `DEV-1 gh auth`, `DEV-1 claude` (SHOULD ≥ 2.1.233), `SEC-6`, `COST-1`, `COST-2`, `AGT-5`, `NIGHT-3`. The committed layer row covers §5's "committed stop-gate.mjs and reviewer.md".
+  - DEV-2 reads `~/.claude/plugins/installed_plugins.json` plus `enabledPlugins` instead of running `claude plugin list`, so doctor never starts the real `claude` beyond `--version`. That file's format isn't documented, so it's best effort.
+  - The gate proof copies the repo without `.git`/`node_modules`/build output and swaps the check for `node -e "process.exit(1)"`, then `process.exit(0)`. It proves the gate mechanics, not that the repo's real checks pass.
+  - REV-2 reads `gh api repos/<o>/<r>/rules/branches/<default>` and reports WARN, not FAIL, when code-owner review is off (see the REV-2 proposal).
+  - `--live` runs `claude -p` once on Haiku with `--plugin-dir`, `--setting-sources project` and `--max-turns 3` in a temp repo, using a check that counts its runs. 2+ runs means the plugin Stop hook blocked and the turn continued. 1 means it halted (claude-code#10412). Not yet run for real.
+  - `--claude-bin` (or `HARNESS_CLAUDE_BIN`) lets tests use `test/fixtures/claude-version-stub.mjs`.
+- 2026-10-03 **plugin.json created in phase 3** (BUILD puts it in phase 7) because setup records the plugin version.
+- 2026-10-03 **Floor deny `Read(**/.env.*)`** also blocks `.env.example`. It's kept because SEC-1 requires it; Claude can still read examples if the user pastes them or renames them, e.g. to `env.example`.
+- 2026-10-03 **Mutation check of phase 3**: making the floor merge overwrite existing scalars turned the SEC-2 setup test red.
 - 2026-10-02 **Mutation check of phase 2 tests**: making stop-gate exit 0 instead of 2, and gate-bash never report a force push, turned 17 of 71 tests red. Restoring them brought it back to 71/71.
 
 ## Proposed spec changes
