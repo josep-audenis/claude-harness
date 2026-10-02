@@ -67,6 +67,29 @@ export function commitsAhead(cwd) {
   return r.code === 0 ? Number(r.stdout) || 0 : 0;
 }
 
+// Paths a test-writer may create. Used to recognise brief commits and test tampering.
+export function isTestPath(p) {
+  const f = p.replace(/\\/g, '/');
+  return (
+    /(^|\/)(tests?|__tests__|spec|e2e)\//.test(f) ||
+    /\.(test|spec)\.[cm]?[jt]sx?$/.test(f) ||
+    /(^|\/)test_[^/]*\.py$/.test(f) ||
+    /_test\.(py|go)$/.test(f)
+  );
+}
+
+// A `brief(<id>)` commit at HEAD that only adds the brief, the feature entry and tests.
+// Its red tests are intended (SPEC AGT-2), so the Stop gate doesn't hold that state.
+export function headIsBriefCommit(cwd) {
+  const msg = git(['log', '-1', '--format=%s'], cwd);
+  if (msg.code !== 0 || !/^brief\([^)]+\)/.test(msg.stdout)) return false;
+  const files = git(['diff-tree', '--root', '--no-commit-id', '--name-only', '-r', 'HEAD'], cwd);
+  if (files.code !== 0 || !files.stdout) return false;
+  return files.stdout
+    .split('\n')
+    .every((f) => /^docs\/briefs\/[^/]+\.md$/.test(f) || f === 'feature_list.json' || isTestPath(f));
+}
+
 // Run a harness.json command through the platform shell.
 export function runShell(cmd, cwd, timeoutMs = 540_000) {
   const r = spawnSync(cmd, {
