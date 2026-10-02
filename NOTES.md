@@ -67,6 +67,11 @@ Checked 2026-10-02 against the raw Markdown of code.claude.com/docs/en/<page>.md
 | CLI: `-p`, `--output-format stream-json`, `--verbose`, `--max-turns`, `--plugin-dir`, `--settings`, `--setting-sources user,project,local`, `--permission-mode`, `--model`, `--max-budget-usd`, `--no-session-persistence`, `--bare`, `--restricted` | cli-reference | 2026-10-02 | confirmed (lab isolation flags chosen in phase 8) |
 | `anthropics/claude-code-action@v1` inputs `claude_code_oauth_token`, `prompt`, `claude_args` | github-actions | 2026-10-02 | confirmed (review.yml written in phase 5) |
 | `claude setup-token` | cli-reference | 2026-10-02 | confirmed |
+| Hook `args` (exec form) introduced in **v2.1.139** | Claude Code CHANGELOG.md (github.com/anthropics/claude-code) | 2026-10-03 | confirmed. **Observed on 2.1.92**: `args` is ignored and bare `node` runs, which parses the hook's stdin JSON as a script, fails, and counts as a non-blocking error. Every harness hook is silently inert. Doctor fails DEV-1 below 2.1.139 |
+| `marketplace.json` `metadata.description` (alternate location) | plugins/marketplace-reference | 2026-10-03 | confirmed. Top-level `description` is documented but rejected by 2.1.92 (`Unrecognized key`), so the manifest uses `metadata.description` |
+| `claude plugin validate .` and `./plugins/harness` | local CLI 2.1.92 | 2026-10-03 | both `Validation passed` |
+| `claude --plugin-dir ./plugins/harness --init-only` | cli-reference, local run | 2026-10-03 | plugin loads: hooks.json, 4 agents, 5 skills. This is the run that exposed the exec-form gap on 2.1.92 |
+| Native installer `curl -fsSL https://claude.ai/install.sh \| bash` (CI validate job) | setup | 2026-10-03 | confirmed |
 
 ## How exec-form hooks are written
 ```json
@@ -83,7 +88,6 @@ The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --home 
 | Item | Why | Date |
 |---|---|---|
 | `sandbox.network.*` / `sandbox.credentials.*` in the floor | keys exist, but the right allowlist per device isn't designed yet; SEC-4 makes them optional | 2026-10-02 |
-| Minimum Claude Code version for exec-form hooks | the docs give no version floor for `args` | 2026-10-02 |
 | Plugin Stop hook exit-2 behaviour (anthropics/claude-code#10412) | can only be proven live: `doctor --live` | 2026-10-02 |
 
 ## Deviations from BUILD.md
@@ -114,6 +118,11 @@ The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --home 
 - 2026-10-03 **Skill invocation**: `brief` and `review-loop` are also `disable-model-invocation: true`, alongside setup, adopt and new-app, because they create branches and commits or post on PRs. `doctor` and `verify-done` stay model-invocable; they are read-only apart from running checks.
 - 2026-10-03 **Reviewer** has `disallowedTools: Edit, Write, NotebookEdit` as well as the AGT-1 tool list. Bash stays because it runs the checks itself. Read-only use of Bash is an instruction, not a boundary, because plugin agents ignore `permissionMode` and `hooks`.
 - 2026-10-03 **The /goal printed by brief** names `check.mjs --all` and `test-diff.mjs <BASE>` as executed proof, plus reviewer PASS and "Stop after N turns" (LOOP-2). It tells the session to delegate to `harness:implementer`, merge its worktree branch `--ff-only`, then ask `harness:reviewer`.
+- 2026-10-03 **CI (DIST-4)**:
+  - `.github/workflows/test.yml` runs `npm test` on ubuntu, macos and windows with Node 22, plus ubuntu with Node 20, the DEV-1 floor.
+  - A separate ubuntu job installs Claude Code with the native installer and runs `claude plugin validate` on the marketplace and the plugin. No auth is needed and no tokens are spent.
+  - `npm test` itself never runs `claude`; `test/marketplace.test.mjs` checks the manifests structurally.
+- 2026-10-03 **Dogfood**: `.claude/harness.json` = `{"version":1,"check":["npm test"]}`. Once the plugin is installed, the Stop gate runs the suite (about 60 s on Windows) when this repo has uncommitted work.
 - 2026-10-03 **plugin.json created in phase 3** (BUILD puts it in phase 7) because setup records the plugin version.
 - 2026-10-03 **Floor deny `Read(**/.env.*)`** also blocks `.env.example`. It's kept because SEC-1 requires it; Claude can still read examples if the user pastes them or renames them, e.g. to `env.example`.
 - 2026-10-03 **Mutation check of phase 3**: making the floor merge overwrite existing scalars turned the SEC-2 setup test red.
@@ -125,7 +134,7 @@ The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --home 
 - 2026-10-03 **GATE-2**: add "or HEAD is a `brief(<id>)` commit containing only the brief, the feature_list entry and test files, with a clean tree". Without it, AGT-2's red tests make the brief session unstoppable.
 - 2026-10-03 **LOOP-2**: name `test-diff.mjs <brief-sha>` as the executed form of "no test file modified".
 - 2026-10-02 **SEC-4**: say "on macOS, Linux and WSL2; native Windows has no sandbox".
-- 2026-10-02 **DEV-1**: add a Claude Code version floor of **2.1.233**, the highest stated requirement the harness relies on (`/auto-mode-setup` on native Windows). Doctor warns below it.
+- 2026-10-02 **DEV-1**: add a Claude Code version floor: MUST ≥ **2.1.139** (exec-form hooks; below it every hook is inert, observed 2026-10-03), SHOULD ≥ **2.1.233** (`/auto-mode-setup` on native Windows). Doctor implements both.
 - 2026-10-02 **NIGHT-4 / §8**: routines have hourly limits (100 scheduled runs per hour per account) and draw on subscription usage; drop the "daily routine cap" wording.
 - 2026-10-02 **§8**: move `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, sandbox network/credential keys, `tlsTerminate` (a Boolean under `sandbox.network`, not the object the deck shows) and the Notification `message` field into "verified".
 - 2026-10-02 **DEV-4**: `extraKnownMarketplaces.<name>.autoUpdate: true` could make auto-update part of the floor instead of a manual `/plugin` step. Not done yet, because the marketplace source differs per device (local directory on the dev box, GitHub elsewhere).

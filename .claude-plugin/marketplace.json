@@ -1,0 +1,17 @@
+{
+  "name": "josep-harness",
+  "metadata": {
+    "description": "Josep's agent harness for Claude Code: Stop gate, Bash gate, device floor, maker/checker agents."
+  },
+  "owner": {
+    "name": "Josep Audenis",
+    "url": "https://github.com/josep-audenis"
+  },
+  "plugins": [
+    {
+      "name": "harness",
+      "source": "./plugins/harness",
+      "description": "Executed gates instead of the agent's word: Stop gate on harness.json checks, Bash command gate, session state, device floor, planner/test-writer/implementer/reviewer agents, briefs and review loop."
+    }
+  ]
+}

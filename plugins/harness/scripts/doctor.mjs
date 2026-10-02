@@ -12,7 +12,8 @@ import {
 } from './floor.mjs';
 import { readJson, git, isGitRepo } from './lib.mjs';
 
-const MIN_CLAUDE = [2, 1, 233];
+const MIN_CLAUDE_HOOKS = [2, 1, 139]; // hook `args` (exec form) added in 2.1.139 (Claude Code CHANGELOG)
+const MIN_CLAUDE = [2, 1, 233]; // /auto-mode-setup on native Windows
 const PASS_CMD = 'node -e "process.exit(0)"';
 const FAIL_CMD = 'node -e "process.exit(1)"';
 const COPY_EXCLUDE = new Set(['node_modules', '.git', '.next', 'dist', 'build', '.venv', 'venv', '__pycache__', 'target', '.turbo']);
@@ -93,13 +94,12 @@ function deviceChecks(args) {
     row('DEV-1 claude', 'MUST', 'FAIL', 'Claude Code not found on PATH', 'Install Claude Code with the native installer');
   } else {
     const v = versionOf(cv.out);
-    row(
-      'DEV-1 claude',
-      'SHOULD',
-      atLeast(v, MIN_CLAUDE) ? 'PASS' : 'WARN',
-      `Claude Code ${v.join('.')}${atLeast(v, MIN_CLAUDE) ? '' : ` (harness needs ${MIN_CLAUDE.join('.')}+)`}`,
-      'claude update',
-    );
+    if (!atLeast(v, MIN_CLAUDE_HOOKS)) {
+      row('DEV-1 claude', 'MUST', 'FAIL', `Claude Code ${v.join('.')}: exec-form hooks need ${MIN_CLAUDE_HOOKS.join('.')}+, so every harness hook is silently inert`, 'claude update');
+    } else {
+      const ok = atLeast(v, MIN_CLAUDE);
+      row('DEV-1 claude', 'SHOULD', ok ? 'PASS' : 'WARN', `Claude Code ${v.join('.')}${ok ? '' : ` (/auto-mode-setup on Windows needs ${MIN_CLAUDE.join('.')}+)`}`, 'claude update');
+    }
   }
 
   // DEV-2: plugin installed and enabled.

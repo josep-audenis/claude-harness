@@ -127,6 +127,22 @@ test('doctor: a gate that never blocks is caught by the proof', () => {
   assert.match(rows['GATE-1'].detail, /did not block/);
 });
 
+test('doctor: Claude Code too old for exec-form hooks is a MUST failure; below 2.1.233 a warning', () => {
+  const home = tmpdir('home-doc-version');
+  const at = (version) => {
+    const r = spawnSync(process.execPath, [DOCTOR, '--home', home, '--claude-bin', STUB, '--json', '--no-repo'], {
+      env: childEnv({ CLAUDE_STUB_VERSION: version }, home),
+      encoding: 'utf8',
+    });
+    return byId(JSON.parse(r.stdout))['DEV-1 claude'];
+  };
+  const old = at('2.1.92');
+  assert.equal(old.level, 'MUST');
+  assert.equal(old.status, 'FAIL');
+  assert.match(old.detail, /silently inert/);
+  assert.deepEqual([at('2.1.139').status, at('2.1.200').status, at('2.1.233').status], ['WARN', 'WARN', 'PASS']);
+});
+
 test('doctor: table output and no --live by default', () => {
   const home = tmpdir('home-doc-table');
   const r = spawnSync(process.execPath, [DOCTOR, '--home', home, '--claude-bin', STUB, '--no-repo'], { env: childEnv({}, home), encoding: 'utf8' });
