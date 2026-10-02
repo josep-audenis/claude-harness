@@ -1,3 +1,4 @@
+// GENERATED from plugins/harness/scripts/check.mjs by `npm run sync-templates` in claude-harness. Edit the source, not this copy.
 // Run the .claude/harness.json checks (CTX-3). Used by CI, /harness:verify-done and agents.
 // Usage: node check.mjs [--dir <repo>] [--all] [--verbose] [--json] [--e2e]
 // Default: stop at the first failure (SPEC §6.2). --all runs every check. --e2e runs "e2e".

@@ -1,0 +1,8 @@
+# Harness paths are human-owned, so an agent can never approve changes to its own gates (SPEC REV-3).
+/.claude/ @OWNER
+/.github/ @OWNER
+/AGENTS.md @OWNER
+/CLAUDE.md @OWNER
+/CODEOWNERS @OWNER
+migrations/ @OWNER
+/drizzle/ @OWNER

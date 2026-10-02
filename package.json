@@ -5,6 +5,7 @@
   "description": "Dev tooling for the claude-harness repo. No runtime dependencies.",
   "engines": { "node": ">=20" },
   "scripts": {
-    "test": "node test/run.mjs"
+    "test": "node test/run.mjs",
+    "sync-templates": "node tools/sync-templates.mjs"
   }
 }

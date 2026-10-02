@@ -1,0 +1,41 @@
+# Claude review on every PR (SPEC REV-1). The job name `review` is a required status check (REV-2).
+# Needs the repo secret CLAUDE_CODE_OAUTH_TOKEN: `claude setup-token`, then
+# `gh secret set CLAUDE_CODE_OAUTH_TOKEN`. A review that finishes in seconds reviewed nothing:
+# read its log (REV-5). The action skips when this file differs from the default branch's copy.
+name: review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+  id-token: write
+
+jobs:
+  review:
+    name: review
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are the reviewer for PR #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Follow .claude/agents/reviewer.md. Read the brief in docs/briefs/ that the PR's feature
+            names (see feature_list.json) before the diff. Diff base: origin/${{ github.event.pull_request.base.ref }}.
+            Check scope against the brief's fence and look hard for test tampering:
+            run `node .claude/hooks/test-diff.mjs origin/${{ github.event.pull_request.base.ref }}`, then judge whether
+            every test change was part of the brief commit.
+            Post inline comments for findings tied to a line. Then post exactly one summary comment with
+            `gh pr comment ${{ github.event.pull_request.number }} --body-file -` whose first line is exactly
+            PASS or CHANGES_REQUESTED, followed by one line per finding (BLOCKER|MAJOR|MINOR path:line - problem)
+            and a "Checked:" list. Never approve, never merge, never push.
+          claude_args: >-
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(git diff:*),Bash(git log:*),Bash(node .claude/hooks/test-diff.mjs:*)"

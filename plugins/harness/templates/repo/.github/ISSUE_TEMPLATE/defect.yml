@@ -1,0 +1,61 @@
+# Defect form (SPEC NIGHT-1). Search open AND closed issues for the key before filing.
+name: Defect
+description: A reproducible defect for the night shift to pick up.
+title: "[defect] <file::symbol> <failure shape>"
+labels: ["agent-ready"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, search **open and closed** issues for the key below. If it exists, comment there instead.
+  - type: input
+    id: key
+    attributes:
+      label: Stable key
+      description: "`path/to/file.ts::symbol` plus the failure shape. No line numbers. Name the code that has to change, not where you noticed it."
+      placeholder: "src/api/users.ts::createUser crash-on-input"
+    validations:
+      required: true
+  - type: dropdown
+    id: shape
+    attributes:
+      label: Failure shape
+      options:
+        - crash-on-input
+        - wrong-output
+        - missing-validation
+        - data-loss
+        - security
+        - performance
+        - flaky
+        - other
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - S1 critical (data loss, security, outage)
+        - S2 major (feature broken, no workaround)
+        - S3 minor (workaround exists)
+        - S4 cosmetic
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduce
+      description: The exact command(s), verbatim. Expected vs actual. Paste evidence; don't paraphrase it.
+      render: shell
+      placeholder: |
+        $ pnpm test:unit -- users
+        expected: 400 for an empty email
+        actual:   500 TypeError: Cannot read properties of undefined (reading 'trim')
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Linked issues (a defect spanning two repos is two linked issues), suspected cause, workaround in use.

@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "check": ["pnpm -s typecheck", "pnpm -s lint", "pnpm -s test:unit"],
+  "init": "pnpm dev",
+  "health": "http://localhost:3000/api/health",
+  "e2e": "pnpm test:e2e"
+}

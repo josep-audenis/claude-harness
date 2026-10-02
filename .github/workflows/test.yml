@@ -31,6 +31,25 @@ jobs:
           git config --global user.email ci@example.com
       - run: npm test
 
+  template-app:
+    name: template app installs and passes its checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - name: git identity for test repos
+        run: |
+          git config --global user.name ci
+          git config --global user.email ci@example.com
+      - run: node test/run.mjs templates
+        env:
+          HARNESS_E2E: '1'
+
   validate:
     name: claude plugin validate
     runs-on: ubuntu-latest
