@@ -46,7 +46,7 @@ jobs:
         run: |
           git config --global user.name ci
           git config --global user.email ci@example.com
-      - run: node test/run.mjs templates
+      - run: node test/run.mjs templates new-app
         env:
           HARNESS_E2E: '1'
 

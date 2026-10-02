@@ -135,6 +135,23 @@ The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --home 
   - The app ships its own stack-specific `CLAUDE.md` (33 lines). `new-app` uses it instead of `CLAUDE.skeleton.md`, which stays as adopt's starting point when a repo has no CLAUDE.md. `gitignore` is stored without the dot and renamed by new-app; `.gitattributes` forces LF.
   - **Proven**: a generated app installs with `--frozen-lockfile` and passes typecheck, lint and unit tests (warm: 2.0 s, 4.1 s, 0.9 s; first cold lint on Windows took 90 s). `doctor --repo` on it passes CTX-2/3/4/7, NIGHT-3, REV-1, REV-3 and GATE-1 (proven with the committed gate). `HARNESS_E2E=1` test plus a CI `template-app` job.
   - Playwright e2e was not run locally: browser download goes to the user profile, outside allowed write locations. CI's e2e job in generated apps covers it.
+- 2026-10-03 **adopt.mjs (phase 6)**:
+  - Template files are classed as *managed* or *seeded*. Managed: the committed hooks, `reviewer.md`, `ci.yml`, `review.yml`, `defect.yml`. A re-run compares these with the template and reports DIFFERS with a line diff (ADOPT-4). Seeded: `AGENTS.md`, `feature_list.json`, `progress.md`, `NIGHT-LOG.md`, the briefs dir. These are added when missing and never compared, because they are meant to diverge.
+  - `--update <paths|all>` takes the template version of DIFFERS files, once the skill has asked.
+  - `_draft: true` marks the whole drafted `harness.json`. The skill removes it once the checks pass on today's code.
+  - Detection:
+    - package.json: typecheck/type-check/check-types/tsc, lint, test:unit, else test. Package manager from the lockfile; the npm-init "no test specified" placeholder is skipped.
+    - pyproject.toml / requirements: ruff check, mypy, pytest -q.
+    - go.mod: go vet, go test. Cargo.toml: cargo fmt --check, cargo test.
+  - CODEOWNERS lines are appended by pattern with `@<owner>`; without `--owner` they keep `@OWNER` and a note asks to replace it.
+  - Settings merge adds the Stop/formatter groups unless that event already references the script, and sets `worktree.baseRef` only if unset.
+  - adopt never commits: the skill commits after making the checks real. Dry-run doesn't create the branch.
+- 2026-10-03 **new-app.mjs**:
+  - Copies the app template, then the repo template; the app's own files win (its `CLAUDE.md` beats the skeleton). Renames `gitignore` and `CODEOWNERS.fragment`, and fails if any `APP_NAME` or `@OWNER` remains.
+  - The owner comes from `--owner`, else `gh api user`. `--public` exists because private repos on GitHub Free can't use rulesets (REV-2); the skill asks.
+  - It skips `gh repo create` when the gate proof fails. It doesn't run `pnpm install`; the skill does.
+- 2026-10-03 **prove.mjs**: GATE-6 proof extracted from doctor.mjs so doctor and new-app share it. It reports which gate was proven: committed or plugin.
+- 2026-10-03 **Mutation check of phase 6**: removing adopt's dirty-tree refusal and letting it overwrite an existing CLAUDE.md turned 3 adopt tests red.
 - 2026-10-03 **plugin.json created in phase 3** (BUILD puts it in phase 7) because setup records the plugin version.
 - 2026-10-03 **Floor deny `Read(**/.env.*)`** also blocks `.env.example`. It's kept because SEC-1 requires it; Claude can still read examples if the user pastes them or renames them, e.g. to `env.example`.
 - 2026-10-03 **Mutation check of phase 3**: making the floor merge overwrite existing scalars turned the SEC-2 setup test red.

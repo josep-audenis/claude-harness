@@ -11,12 +11,10 @@ import {
   deepEqual, pluginVersion,
 } from './floor.mjs';
 import { readJson, git, isGitRepo } from './lib.mjs';
+import { proveGate } from './prove.mjs';
 
 const MIN_CLAUDE_HOOKS = [2, 1, 139]; // hook `args` (exec form) added in 2.1.139 (Claude Code CHANGELOG)
 const MIN_CLAUDE = [2, 1, 233]; // /auto-mode-setup on native Windows
-const PASS_CMD = 'node -e "process.exit(0)"';
-const FAIL_CMD = 'node -e "process.exit(1)"';
-const COPY_EXCLUDE = new Set(['node_modules', '.git', '.next', 'dist', 'build', '.venv', 'venv', '__pycache__', 'target', '.turbo']);
 
 function parseArgs(argv) {
   const a = { home: null, repo: null, noRepo: false, live: false, json: false, claudeBin: process.env.HARNESS_CLAUDE_BIN || 'claude' };
@@ -167,42 +165,6 @@ function deviceChecks(args) {
 }
 
 // ---------- repo ----------
-function gateScriptFor(dir) {
-  const committed = path.join(dir, '.claude', 'hooks', 'stop-gate.mjs');
-  return fs.existsSync(committed) ? committed : path.join(PLUGIN_ROOT, 'scripts', 'stop-gate.mjs');
-}
-
-function runGate(dir, check) {
-  fs.writeFileSync(path.join(dir, '.claude', 'harness.json'), JSON.stringify({ version: 1, check: [check] }) + '\n');
-  const env = { ...process.env, CLAUDE_PROJECT_DIR: dir };
-  delete env.CLAUDE_PLUGIN_ROOT;
-  return spawnSync(process.execPath, [gateScriptFor(dir)], {
-    cwd: dir,
-    input: JSON.stringify({ hook_event_name: 'Stop', cwd: dir }),
-    env,
-    encoding: 'utf8',
-    timeout: 60_000,
-    windowsHide: true,
-  });
-}
-
-// GATE-6: copy the repo, break the check, confirm the gate blocks; fix it, confirm it passes.
-function proveGate(repo) {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-gate-proof-'));
-  try {
-    fs.cpSync(repo, tmp, { recursive: true, filter: (src) => !COPY_EXCLUDE.has(path.basename(src)) });
-    const broken = runGate(tmp, FAIL_CMD);
-    if (broken.status !== 2 || !/Not done:/.test(broken.stderr)) {
-      return { ok: false, detail: `broken check did not block (exit ${broken.status})` };
-    }
-    const fixed = runGate(tmp, PASS_CMD);
-    if (fixed.status !== 0) return { ok: false, detail: `fixed check still blocks (exit ${fixed.status})` };
-    return { ok: true, detail: `${path.relative(tmp, gateScriptFor(tmp)).startsWith('..') ? 'plugin' : 'committed'} gate blocked a broken check and passed a fixed one` };
-  } finally {
-    fs.rmSync(tmp, { recursive: true, force: true });
-  }
-}
-
 function repoChecks(repo) {
   const p = (...x) => path.join(repo, ...x);
   const has = (...x) => fs.existsSync(p(...x));

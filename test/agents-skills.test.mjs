@@ -54,7 +54,11 @@ test('agents: the reviewer has no edit tools; the planner cannot run commands', 
   assert.ok(!list(planner.data.tools).includes('Bash') && !list(planner.data.tools).includes('Edit'));
 });
 
-const SKILLS = { setup: true, doctor: false, brief: true, 'verify-done': false, 'review-loop': true };
+const SKILLS = { setup: true, doctor: false, brief: true, 'verify-done': false, 'review-loop': true, adopt: true, 'new-app': true };
+
+test('skills: exactly the seven BUILD §1 skills', () => {
+  assert.deepEqual(fs.readdirSync(path.join(PLUGIN, 'skills')).sort(), Object.keys(SKILLS).sort());
+});
 
 test('skills: names, descriptions, side-effect skills are user-only, referenced scripts exist', () => {
   for (const [name, userOnly] of Object.entries(SKILLS)) {
