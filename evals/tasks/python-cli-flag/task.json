@@ -1,0 +1,9 @@
+{
+  "id": "python-cli-flag",
+  "description": "Add a --json flag to a small Python CLI; checks the harness isn't JavaScript-only",
+  "prompt": "Add a --json flag to the wordcount CLI. With --json, `python -m wordcount <file>` prints a single JSON object {\"lines\": n, \"words\": n, \"chars\": n} instead of the plain text line. Without the flag, the output must stay exactly as it is. Add a test.",
+  "verify": ["node {task}/verify/verify.mjs"],
+  "protected": ["tests/test_cli.py"],
+  "maxTurns": 20,
+  "tags": ["feature", "small", "python"]
+}

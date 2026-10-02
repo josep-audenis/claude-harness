@@ -1,0 +1,378 @@
+{
+  "inputs": [
+    0,
+    1,
+    2.5,
+    1234.5678
+  ],
+  "exports": [
+    "CONVERTERS",
+    "bytesToGigabytes",
+    "bytesToKibibytes",
+    "bytesToKilobytes",
+    "bytesToMebibytes",
+    "bytesToMegabytes",
+    "centimetersToMeters",
+    "convert",
+    "cupsToLiters",
+    "daysToSeconds",
+    "feetToMeters",
+    "gallonsToLiters",
+    "gigabytesToBytes",
+    "gramsToKilograms",
+    "gramsToMilligrams",
+    "gramsToOunces",
+    "gramsToPounds",
+    "gramsToStones",
+    "hoursToSeconds",
+    "inchesToMeters",
+    "kibibytesToBytes",
+    "kilobytesToBytes",
+    "kilogramsToGrams",
+    "kilometersToMeters",
+    "litersToCups",
+    "litersToGallons",
+    "litersToMilliliters",
+    "litersToPints",
+    "litersToQuarts",
+    "mebibytesToBytes",
+    "megabytesToBytes",
+    "metersToCentimeters",
+    "metersToFeet",
+    "metersToInches",
+    "metersToKilometers",
+    "metersToMiles",
+    "metersToMillimeters",
+    "metersToYards",
+    "milesToMeters",
+    "milligramsToGrams",
+    "millilitersToLiters",
+    "millimetersToMeters",
+    "minutesToSeconds",
+    "ouncesToGrams",
+    "pintsToLiters",
+    "poundsToGrams",
+    "quartsToLiters",
+    "secondsToDays",
+    "secondsToHours",
+    "secondsToMinutes",
+    "secondsToWeeks",
+    "stonesToGrams",
+    "weeksToSeconds",
+    "yardsToMeters"
+  ],
+  "golden": {
+    "metersToKilometers": [
+      0,
+      0.001,
+      0.0025,
+      1.234568
+    ],
+    "metersToCentimeters": [
+      0,
+      100,
+      250,
+      123456.78
+    ],
+    "metersToMillimeters": [
+      0,
+      1000,
+      2500,
+      1234567.8
+    ],
+    "metersToMiles": [
+      0,
+      0.000621,
+      0.001553,
+      0.767125
+    ],
+    "metersToYards": [
+      0,
+      1.093613,
+      2.734033,
+      1350.139764
+    ],
+    "metersToFeet": [
+      0,
+      3.28084,
+      8.2021,
+      4050.419291
+    ],
+    "metersToInches": [
+      0,
+      39.370079,
+      98.425197,
+      48605.031496
+    ],
+    "kilometersToMeters": [
+      0,
+      1000,
+      2500,
+      1234567.8
+    ],
+    "centimetersToMeters": [
+      0,
+      0.01,
+      0.025,
+      12.345678
+    ],
+    "millimetersToMeters": [
+      0,
+      0.001,
+      0.0025,
+      1.234568
+    ],
+    "milesToMeters": [
+      0,
+      1609.344,
+      4023.36,
+      1986844.281523
+    ],
+    "yardsToMeters": [
+      0,
+      0.9144,
+      2.286,
+      1128.888796
+    ],
+    "feetToMeters": [
+      0,
+      0.3048,
+      0.762,
+      376.296265
+    ],
+    "inchesToMeters": [
+      0,
+      0.0254,
+      0.0635,
+      31.358022
+    ],
+    "gramsToKilograms": [
+      0,
+      0.001,
+      0.0025,
+      1.234568
+    ],
+    "gramsToMilligrams": [
+      0,
+      1000,
+      2500,
+      1234567.8
+    ],
+    "gramsToPounds": [
+      0,
+      0.002205,
+      0.005512,
+      2.721756
+    ],
+    "gramsToOunces": [
+      0,
+      0.035274,
+      0.088185,
+      43.548098
+    ],
+    "gramsToStones": [
+      0,
+      0.000157,
+      0.000394,
+      0.194411
+    ],
+    "kilogramsToGrams": [
+      0,
+      1000,
+      2500,
+      1234567.8
+    ],
+    "milligramsToGrams": [
+      0,
+      0.001,
+      0.0025,
+      1.234568
+    ],
+    "poundsToGrams": [
+      0,
+      453.59237,
+      1133.980925,
+      559990.534328
+    ],
+    "ouncesToGrams": [
+      0,
+      28.349523,
+      70.873808,
+      34999.408395
+    ],
+    "stonesToGrams": [
+      0,
+      6350.29318,
+      15875.73295,
+      7839867.480588
+    ],
+    "litersToMilliliters": [
+      0,
+      1000,
+      2500,
+      1234567.8
+    ],
+    "litersToGallons": [
+      0,
+      0.264172,
+      0.66043,
+      326.13831
+    ],
+    "litersToQuarts": [
+      0,
+      1.056688,
+      2.641721,
+      1304.553238
+    ],
+    "litersToPints": [
+      0,
+      2.113376,
+      5.283441,
+      2609.106476
+    ],
+    "litersToCups": [
+      0,
+      4.226753,
+      10.566882,
+      5218.212952
+    ],
+    "millilitersToLiters": [
+      0,
+      0.001,
+      0.0025,
+      1.234568
+    ],
+    "gallonsToLiters": [
+      0,
+      3.785412,
+      9.463529,
+      4673.347498
+    ],
+    "quartsToLiters": [
+      0,
+      0.946353,
+      2.365882,
+      1168.336875
+    ],
+    "pintsToLiters": [
+      0,
+      0.473176,
+      1.182941,
+      584.168437
+    ],
+    "cupsToLiters": [
+      0,
+      0.236588,
+      0.591471,
+      292.084219
+    ],
+    "bytesToKilobytes": [
+      0,
+      0.001,
+      0.0025,
+      1.234568
+    ],
+    "bytesToMegabytes": [
+      0,
+      0.000001,
+      0.000003,
+      0.001235
+    ],
+    "bytesToGigabytes": [
+      0,
+      0,
+      0,
+      0.000001
+    ],
+    "bytesToKibibytes": [
+      0,
+      0.000977,
+      0.002441,
+      1.205633
+    ],
+    "bytesToMebibytes": [
+      0,
+      0.000001,
+      0.000002,
+      0.001177
+    ],
+    "kilobytesToBytes": [
+      0,
+      1000,
+      2500,
+      1234567.8
+    ],
+    "megabytesToBytes": [
+      0,
+      1000000,
+      2500000,
+      1234567800
+    ],
+    "gigabytesToBytes": [
+      0,
+      1000000000,
+      2500000000,
+      1234567800000
+    ],
+    "kibibytesToBytes": [
+      0,
+      1024,
+      2560,
+      1264197.4272
+    ],
+    "mebibytesToBytes": [
+      0,
+      1048576,
+      2621440,
+      1294538165.4528
+    ],
+    "secondsToMinutes": [
+      0,
+      0.016667,
+      0.041667,
+      20.57613
+    ],
+    "secondsToHours": [
+      0,
+      0.000278,
+      0.000694,
+      0.342936
+    ],
+    "secondsToDays": [
+      0,
+      0.000012,
+      0.000029,
+      0.014289
+    ],
+    "secondsToWeeks": [
+      0,
+      0.000002,
+      0.000004,
+      0.002041
+    ],
+    "minutesToSeconds": [
+      0,
+      60,
+      150,
+      74074.068
+    ],
+    "hoursToSeconds": [
+      0,
+      3600,
+      9000,
+      4444444.08
+    ],
+    "daysToSeconds": [
+      0,
+      86400,
+      216000,
+      106666657.92
+    ],
+    "weeksToSeconds": [
+      0,
+      604800,
+      1512000,
+      746666605.44
+    ]
+  }
+}

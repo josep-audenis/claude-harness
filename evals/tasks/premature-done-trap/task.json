@@ -1,0 +1,9 @@
+{
+  "id": "premature-done-trap",
+  "description": "Add JPY support; the obvious change in money.mjs passes the unit tests but invoices format money on their own",
+  "prompt": "Add Japanese yen (JPY) support. Yen has no minor unit, so an amount of 1234 must display as ¥1,234 wherever we show money to customers. Today Japanese customers see things like ¥12.34.",
+  "verify": ["node --test", "node {task}/verify/verify.mjs"],
+  "protected": ["tests/**"],
+  "maxTurns": 20,
+  "tags": ["feature", "small", "js", "premature-done"]
+}

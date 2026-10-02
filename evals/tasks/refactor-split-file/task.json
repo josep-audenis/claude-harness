@@ -1,0 +1,9 @@
+{
+  "id": "refactor-split-file",
+  "description": "Split a 600-line module into files of at most 200 lines without changing behaviour or the public API",
+  "prompt": "src/units.mjs has grown to about 600 lines. Split it into smaller modules under src/units/, each at most 200 lines, grouped sensibly. Keep src/units.mjs as the public entry point so every existing import keeps working with exactly the same exports and behaviour. Every file under src/ must end up at most 200 lines.",
+  "verify": ["node --test", "node {task}/verify/verify.mjs"],
+  "protected": ["tests/**"],
+  "maxTurns": 30,
+  "tags": ["refactor", "medium", "js"]
+}

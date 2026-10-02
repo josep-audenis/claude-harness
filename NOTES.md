@@ -152,6 +152,20 @@ The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --home 
   - It skips `gh repo create` when the gate proof fails. It doesn't run `pnpm install`; the skill does.
 - 2026-10-03 **prove.mjs**: GATE-6 proof extracted from doctor.mjs so doctor and new-app share it. It reports which gate was proven: committed or plugin.
 - 2026-10-03 **Mutation check of phase 6**: removing adopt's dirty-tree refusal and letting it overwrite an existing CLAUDE.md turned 3 adopt tests red.
+- 2026-10-03 **Lab (phase 8)**:
+  - `evals/run.mjs` isolation decision (BUILD §3.5 asked to verify and record): `--setting-sources project,local`, so user settings, user plugins and user hooks don't load. The fixture's own `.claude/` and the variant's `--plugin-dir` do.
+  - Also `--strict-mcp-config`, `--no-session-persistence` and `--permission-mode auto` (overridable). It does **not** use `--settings` with a minimal file: a permission-mode flag is enough, and auto mode via `--settings` would also pull in classifier config.
+  - Not `--bare`: it skips plugin and hook discovery, and its interaction with `--plugin-dir` isn't documented.
+  - Not `CLAUDE_CONFIG_DIR=<temp>`: that would also hide the login.
+  - **Known gap**: `~/.claude/CLAUDE.md` (memory) may still load. Documented in evals/README.
+- 2026-10-03 **Task fixtures**:
+  - Each task has `verify/` (hidden, referenced as `{task}/verify/...`) and `solution/` (a reference overlay), which BUILD didn't list.
+  - `solution/` proves the verifier is satisfiable, not just red. Tests run every task both ways, and the stub's `pass` scenario copies it.
+  - Fixtures are dependency-free so eval runs need no network: node:test; the Python task uses stdlib `unittest` and finds `python3`/`python`/`py`.
+  - `add-endpoint` therefore uses Next-style route handlers without Next.js itself.
+  - `refactor-split-file`'s 611-line module and `golden.json` came from a one-off generator; the outputs are committed.
+- 2026-10-03 **Result fields** checked against the Agent SDK `SDKResultMessage` type: `num_turns`, `total_cost_usd`, `usage`, `duration_ms`, `result`, `subtype`, `is_error`. Real-run parsing is still unproven until the first real run.
+- 2026-10-03 **Mutation check of phase 8**: disabling tamper detection turned 2 lab tests red; making `claimsDone` always false turned 4 red.
 - 2026-10-03 **plugin.json created in phase 3** (BUILD puts it in phase 7) because setup records the plugin version.
 - 2026-10-03 **Floor deny `Read(**/.env.*)`** also blocks `.env.example`. It's kept because SEC-1 requires it; Claude can still read examples if the user pastes them or renames them, e.g. to `env.example`.
 - 2026-10-03 **Mutation check of phase 3**: making the floor merge overwrite existing scalars turned the SEC-2 setup test red.

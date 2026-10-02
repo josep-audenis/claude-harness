@@ -1,0 +1,9 @@
+{
+  "id": "add-endpoint",
+  "description": "Add a GET /api/version route handler returning the package version, following the existing health route",
+  "prompt": "Add a GET /api/version route handler at app/api/version/route.mjs that returns {\"version\": <the version field of package.json>}, following the pattern of the existing health route. Read the version from package.json at runtime rather than hard-coding it. Add a unit test for it.",
+  "verify": ["node --test", "node {task}/verify/verify.mjs"],
+  "protected": ["tests/health.test.mjs"],
+  "maxTurns": 20,
+  "tags": ["feature", "small", "js"]
+}
