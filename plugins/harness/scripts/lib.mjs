@@ -17,8 +17,20 @@ export async function readStdinJson() {
   }
 }
 
+// The repo the session works in. CLAUDE_PROJECT_DIR stays on the checkout the session started in,
+// so when the hook input's cwd is a linked worktree of that same repo (EnterWorktree), use the worktree.
 export function projectDir(input = {}) {
-  return path.resolve(process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd());
+  const base = path.resolve(process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd());
+  if (!process.env.CLAUDE_PROJECT_DIR || typeof input.cwd !== 'string' || !input.cwd) return base;
+  const top = git(['rev-parse', '--show-toplevel'], input.cwd);
+  if (top.code !== 0 || !top.stdout || samePath(top.stdout, base)) return base;
+  const commonDir = (d) => {
+    const r = git(['rev-parse', '--git-common-dir'], d);
+    return r.code === 0 && r.stdout ? path.resolve(d, r.stdout) : null;
+  };
+  const a = commonDir(top.stdout);
+  const b = commonDir(base);
+  return a && b && samePath(a, b) ? path.resolve(top.stdout) : base;
 }
 
 export function readJson(file, fallback = null) {

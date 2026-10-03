@@ -152,6 +152,38 @@ test('stop-gate (SubagentStop): never defers to a committed copy (the repo copy 
   assert.equal(subagentStop(wt, main, { CLAUDE_PLUGIN_ROOT: PLUGIN }).code, 2);
 });
 
+// A session that moved into a linked worktree (EnterWorktree) keeps CLAUDE_PROJECT_DIR on the main
+// checkout; the work being gated is in the hook input's cwd.
+const mainStop = (cwd, main) =>
+  runScript(GATE, { hook_event_name: 'Stop', cwd, stop_hook_active: false }, {
+    cwd: main,
+    env: { CLAUDE_PROJECT_DIR: main },
+  });
+
+test('stop-gate: session in a linked worktree gates the worktree, not the main checkout', () => {
+  const probe = 'node -e "require(\'fs\').writeFileSync(\'ran.txt\', \'1\'); process.exit(1)"';
+  const { main, wt } = worktreeRepo(probe);
+  write(wt, 'work.txt', 'x');
+  const r = mainStop(wt, main);
+  assert.equal(r.code, 2, r.stderr);
+  assert.equal(fs.existsSync(path.join(wt, 'ran.txt')), true, 'checks ran in the worktree');
+  assert.equal(fs.existsSync(path.join(main, 'ran.txt')), false, 'checks did not run in the main checkout');
+});
+
+test('stop-gate: session in a clean linked worktree skips even when the main checkout is dirty', () => {
+  const { main, wt } = worktreeRepo(FAIL_CMD);
+  write(main, 'dirty.txt', 'x');
+  assert.equal(mainStop(wt, main).code, 0);
+});
+
+test('stop-gate: cwd in a subdirectory or an unrelated repo still gates CLAUDE_PROJECT_DIR', () => {
+  const main = makeRepo(contract(FAIL_CMD));
+  write(main, 'sub/dirty.txt', 'x');
+  assert.equal(mainStop(path.join(main, 'sub'), main).code, 2);
+  const other = makeRepo();
+  assert.equal(mainStop(other, main).code, 2);
+});
+
 test('stop-gate: checks see which gate runs them (HARNESS_GATE_EVENT)', () => {
   const probe = 'node -e "require(\'fs\').appendFileSync(\'events.txt\', process.env.HARNESS_GATE_EVENT + \'\\n\'); process.exit(1)"';
   const { main, wt } = worktreeRepo(probe);
