@@ -1,6 +1,6 @@
 # Claude Code primitives: reference
 
-What the harness is built from. Facts were checked against code.claude.com/docs between 2026-09-28 and 2026-10-02. Features change quickly, so re-check before relying on a detail and update `NOTES.md` when something changes. Version floors are given where the docs state them.
+What the harness is built from. Facts were checked against code.claude.com/docs between 2026-09-28 and 2026-10-02. Items marked *checked 2026-10-03* were re-verified against the raw Markdown pages (`code.claude.com/docs/en/<page>.md`) while building the harness; NOTES.md has the full table. Features change quickly, so re-check before relying on a detail and update `NOTES.md` when something changes. Version floors are given where the docs state them.
 
 ## Permissions and auto mode
 
@@ -13,7 +13,15 @@ What the harness is built from. Facts were checked against code.claude.com/docs 
   - Inspect with `claude auto-mode defaults`, `config` and `critique`; start over with `reset`.
   - `autoMode.classifyAllShell: true` routes every shell command through the classifier.
   - Denials are listed in `/permissions` → Recently denied.
-- **Sandbox:** `/sandbox`, and `sandbox.enabled`. Bash and its children run with only the working directory writable and network access through an allowlist proxy. Sub-keys for the network and credentials weren't verified here.
+- **Sandbox:** `/sandbox`, and `sandbox.enabled`. Bash and its children run with only the working directory writable and network access through an allowlist proxy.
+  - **Platforms:** macOS, Linux and WSL2. On native Windows, Claude Code runs commands unsandboxed. Linux and WSL2 need `bubblewrap` and `socat`. *(sandboxing, settings-reference; checked 2026-10-03)*
+  - **Sub-keys that exist:**
+    - `sandbox.network`: `allowedDomains`, `deniedDomains`, `strictAllowlist`, and `tlsTerminate` (a Boolean, user or managed scope only);
+    - `sandbox.credentials`: `envVars`, `files`;
+    - `sandbox.filesystem`: `denyRead`, `allowWrite`, …;
+    - `failIfUnavailable`.
+
+    The harness floor doesn't use them yet. *(settings-reference; checked 2026-10-03)*
 
 ## Hooks
 
@@ -39,7 +47,8 @@ What the harness is built from. Facts were checked against code.claude.com/docs 
   - `additionalContext` goes inside `hookSpecificOutput`.
 - **Matchers** are regex on the tool name, e.g. `Edit|Write` or `mcp__github__.*`. The `if` field filters with permission-rule syntax, e.g. `"if": "Bash(git *)"`, but only on tool events and only best-effort. Use permissions for hard rules.
 - **All matching hooks run in parallel.** For PreToolUse the most restrictive decision wins: deny, then defer, then ask, then allow.
-- **Stop hook cap:** after 8 consecutive blocks without progress, Claude Code overrides the hook. The input field `stop_hook_active` tells the hook a continuation is already in progress.
+- **Exec form needs v2.1.139+** *(Claude Code CHANGELOG, checked 2026-10-03)*. Older versions ignore `args` and run `command` alone. A `"command": "node"` hook then starts a bare Node that parses the hook's stdin JSON as a script and fails as a non-blocking error, so the hook is silently inert (observed on v2.1.92).
+- **Stop hook cap:** after 8 consecutive blocks, Claude Code overrides the hook and ends the turn. `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` changes the cap, and `0` disables it. The input field `stop_hook_active` tells the hook a continuation is already in progress. Stop input also carries `last_assistant_message` (v2.1.196+). *(hooks, env-vars; checked 2026-10-03)*
 - **Timeouts:** command, http and mcp_tool 10 min; prompt 30 s; agent 60 s; `SessionEnd` 1.5 s total.
 - **Environment:** `CLAUDE_PROJECT_DIR` is available. `CLAUDE_ENV_FILE` lets SessionStart or CwdChanged persist env vars.
 - **Platform shells:** shell-form hooks run with `sh -c` on macOS and Linux, and Git Bash (or PowerShell if Git Bash is absent) on Windows. Exec form avoids the shell entirely.
@@ -54,7 +63,12 @@ What the harness is built from. Facts were checked against code.claude.com/docs 
 ## Skills, subagents, plugins
 
 - **Skills** live at `~/.claude/skills/<name>/SKILL.md` or `.claude/skills/`. Frontmatter includes `name`, `description`, `disable-model-invocation`, `allowed-tools`, `model`, `context: fork`, and hooks. Bundled skills include `/batch`, `/verify`, `/deep-research` (a workflow) and `/workflow-authoring`.
-- **Subagents** live at `~/.claude/agents/*.md` or `.claude/agents/`. Frontmatter: `name`, `description`, `tools`, `disallowedTools`, `model`, `permissionMode`, `mcpServers`, `hooks`, `maxTurns`, `skills`, `initialPrompt`, `memory`, `effort`, `background`, `isolation: worktree`. Each runs on its own context and returns a summary. `CLAUDE_CODE_SUBAGENT_MODEL` sets the default model.
+- **Subagents** live at `~/.claude/agents/*.md` or `.claude/agents/`. Frontmatter: `name`, `description`, `tools`, `disallowedTools`, `model`, `permissionMode`, `mcpServers`, `hooks`, `maxTurns`, `skills`, `initialPrompt`, `memory`, `effort`, `background`, `isolation: worktree`, `color`, `omitClaudeMd`. Each runs on its own context and returns a summary.
+  - **Model precedence:** the model passed when spawning > the agent's `model` > `CLAUDE_CODE_SUBAGENT_MODEL` > the main model. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` makes the env var win.
+  - **Plugin agents ignore** `hooks`, `mcpServers` and `permissionMode`.
+  - **`isolation: worktree`** branches from the default branch unless `worktree.baseRef` is `"head"` (settable in any settings file). Worktrees contain only committed, tracked files.
+
+  *(sub-agents, worktrees, settings-reference; checked 2026-10-03)*
 - **Plugins** bundle skills, agents, hooks (`hooks/hooks.json`), commands, MCP and LSP servers, output styles, **workflows** and monitors.
   - Components are namespaced as `plugin:name`.
   - `${CLAUDE_PLUGIN_ROOT}` is the install path and changes on update; `${CLAUDE_PLUGIN_DATA}` is persistent across updates.
@@ -63,6 +77,11 @@ What the harness is built from. Facts were checked against code.claude.com/docs 
   - No top-level `bin/` if you want claude.ai org sync.
   - Validate with `claude plugin validate <dir>`. Try one locally with `claude --plugin-dir <dir>`.
 - **Marketplaces** are a repo with `.claude-plugin/marketplace.json` (`name`, `owner`, `plugins[]` with `source` such as `"./plugins/x"`).
+  - The description goes under `metadata.description`: v2.1.92 rejects a top-level `description` that newer docs allow.
+  - A marketplace added from a **local directory** loads plugins in place: edits apply on `/reload-plugins` with no version bump.
+  - A marketplace is not Anthropic's public directory. Listing there is a separate submission.
+
+  *(plugins/marketplace-reference, plugin-marketplaces; checked 2026-10-03)*
   - Add with `/plugin marketplace add owner/repo`; install with `/plugin install <plugin>@<marketplace>`.
   - Private repos use the machine's git credentials, non-interactively (`gh auth login` plus `gh auth setup-git`).
   - Auto-update is **off by default** per marketplace; enable it in `/plugin` → Marketplaces. Otherwise use `/plugin marketplace update <name>`.
@@ -93,7 +112,7 @@ What the harness is built from. Facts were checked against code.claude.com/docs 
 - **Routines** (research preview): saved prompt plus repos, environment, connectors and triggers.
   - Triggers: schedule (hourly minimum), API (`/fire` with a bearer token), GitHub events (pull_request, release).
   - Create with `/schedule` or at claude.ai/code/routines. They run as you, push to `claude/` branches, and include all connectors by default (remove the ones you don't need). A green run status means only that the run exited cleanly.
-  - Daily run cap per account; Anthropic's launch post said Pro 5 and Max 15. Check the live counter.
+  - Runs draw on subscription usage. Starts are limited per hour: 100 scheduled runs per hour per account, and 30 "Run now"/API fires per hour per routine. The docs state no daily cap; the earlier "Pro 5 / Max 15 per day" figure came from a launch post and isn't in the current docs. *(routines; checked 2026-10-03)*
 - **Dynamic workflows:** JavaScript orchestrating subagents.
   - Trigger with the `ultracode` keyword or "use a workflow", or set `/effort ultracode` for the whole session.
   - Watch and save runs in `/workflows`: press `s` to save to `.claude/workflows/` or `~/.claude/workflows/`, and the run becomes `/<name>`.

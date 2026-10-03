@@ -8,7 +8,23 @@ In Claude Code, from the folder where your projects live:
 /harness:new-app my-app
 ```
 
-This copies the app skeleton (default stack: Next.js + TypeScript, pnpm, Drizzle + SQLite, Vitest, Playwright) and the committed harness layer, replaces `OWNER`, runs `git init`, proves the Stop gate blocks a broken check, creates a private GitHub repo and pushes.
+The skill asks whether the GitHub repo should be private (the default) or public. **On GitHub Free, private repos can't have rulesets**, so branch protection (REV-2) needs a public repo or a paid plan.
+
+It then runs `new-app.mjs`, which:
+- copies the app skeleton: Next.js 16 + TypeScript 5.9, pnpm, Drizzle + SQLite (better-sqlite3), Vitest, Playwright, ESLint 9, pinned with a lockfile;
+- copies the committed harness layer (Stop gate, reviewer, CI and review workflows, defect form, CODEOWNERS);
+- fills in the app name and your GitHub user;
+- runs `git init` and the first commit;
+- proves the Stop gate blocks a broken check (GATE-6);
+- runs `gh repo create` and pushes.
+
+The skill then runs `pnpm install` and the checks. Apps need Node ≥ 22.
+
+To run the script by hand without creating a GitHub repo:
+
+```
+node <plugin>/scripts/new-app.mjs my-app --dir . --owner josep-audenis --no-remote
+```
 
 ## 2. Manual steps (once per app)
 
@@ -19,11 +35,10 @@ This copies the app skeleton (default stack: Next.js + TypeScript, pnpm, Drizzle
    ```
 2. In GitHub → Settings → Rules, add a ruleset on `main`:
    - require a pull request;
-   - require status checks `ci` and `review`;
-   - require code-owner review.
+   - require the status checks `ci` and `review`.
 
-   Rulesets on private repos need a paid GitHub plan. On the free plan, make the app repo public or accept the weaker protection.
-3. Run `/harness:doctor` inside the app. Every repo row should be PASS.
+   Code-owner review is optional for a solo developer. Agents push and open PRs as your GitHub user, and GitHub won't let you approve your own PR. CODEOWNERS still requests your review on harness paths (see NOTES.md, the REV-2 proposal). Doctor reports this as a WARN, not a FAIL.
+3. Run `/harness:doctor` inside the app. Every repo row should be PASS. REV-2 is checked only once the repo has a GitHub remote.
 
 ## 3. First feature
 

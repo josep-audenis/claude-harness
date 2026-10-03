@@ -8,7 +8,11 @@ How to use the harness with about an hour a day. Your time goes into deciding an
 you: one line → /harness:brief → read the brief → dispatch with /goal → reviewer → PR → you merge
 ```
 
-1. **Brief.** `/harness:brief <one-line idea>`. The planner (Opus) writes `docs/briefs/<id>.md` with goal, non-goals, scope fence and acceptance criteria. The test-writer adds tests and shows they fail. You get a `/goal` condition.
+1. **Brief.** `/harness:brief <one-line idea>`. It needs a clean tree, and creates `feat/<id>` if you're on main.
+   - The planner (Opus) writes `docs/briefs/<id>.md` with goal, non-goals, scope fence, design, acceptance criteria and budget.
+   - The test-writer adds tests and shows they fail.
+   - Everything is committed as `brief(<id>): …`. The Stop gate lets that clean, red-by-design commit stand; any later edit re-arms it.
+   - You get a `/goal` condition naming the proving commands, the "no test file changed" check (`test-diff.mjs`) and a turn cap.
 2. **Read the brief.** Five minutes here saves an evening of review. Check the scope fence and that the criteria describe the right thing (P6: green isn't correct).
 3. **Dispatch.** Either:
    - in this session: paste the `/goal` condition; or
@@ -16,7 +20,12 @@ you: one line → /harness:brief → read the brief → dispatch with /goal → 
 
    Keep two background sessions at most.
 4. **Stop gate.** While the agent works, the Stop hook blocks the turn until every `harness.json` check passes.
-5. **Review.** The implementer runs the reviewer subagent before opening a PR. CI and Claude review run on the PR. `/harness:review-loop` answers findings.
+5. **Review.** Following the `/goal`, the session:
+   - delegates to the `harness:implementer` subagent, which works in its own worktree;
+   - merges its branch;
+   - asks the read-only `harness:reviewer` for PASS or CHANGES_REQUESTED.
+
+   `/harness:verify-done <id>` prints the definition of done row by row. On the PR, CI (`ci`) and the Claude review (`review`) run, and `/harness:review-loop` answers their findings.
 6. **Merge.** Merging is always yours.
 
 ## Which loop for which job

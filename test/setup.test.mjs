@@ -71,6 +71,8 @@ test('setup: fresh home gets defaultMode auto, sandbox, env, effort', () => {
   assert.equal(s.effortLevel, 'high');
   assert.ok(!JSON.stringify(s).includes('bypassPermissions'), 'SEC-6');
   assert.ok(!('hooks' in s), 'setup adds no hooks; the plugin supplies them');
+  assert.ok(!('CLAUDE_CODE_STOP_HOOK_BLOCK_CAP' in s.env), 'GATE-7: the floor never raises the Stop-hook cap');
+  assert.ok(!('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS' in s.env), 'AGT-5: agent teams are not enabled by the floor');
 });
 
 test("setup: Josep's real settings shape survives intact", () => {

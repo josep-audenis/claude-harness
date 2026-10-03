@@ -11,9 +11,10 @@ Every change starts in `SPEC.md`, and every claimed improvement should ideally c
    claude
    > Update the implementation to match SPEC.md, following BUILD.md. Add or update tests for the requirements that changed.
    ```
+   If you changed a script that repos commit a copy of (`lib`, `stop-gate`, `format-changed`, `check`, `test-diff`) or the reviewer agent, regenerate the copies with `npm run sync-templates`. The drift test fails until you do.
 4. **Release.**
-   - `npm test` passes and CI is green on ubuntu, macos and windows.
-   - Bump `version` in `plugins/harness/.claude-plugin/plugin.json` and add a `CHANGELOG.md` line. Without the version bump, devices keep their cached copy.
+   - `npm test` passes, `claude plugin validate .` passes, and CI is green on ubuntu, macos and windows (plus the template-app and validate jobs).
+   - Bump `version` in `plugins/harness/.claude-plugin/plugin.json` and add a `CHANGELOG.md` line. Without the version bump, devices that installed from GitHub keep their cached copy. A device that added the local clone as its marketplace loads the files in place and doesn't need a bump.
    - Push.
 5. **Roll out to each device.**
    ```
@@ -21,7 +22,8 @@ Every change starts in `SPEC.md`, and every claimed improvement should ideally c
    /harness:setup                               # only if the device floor (machine/) changed
    /harness:doctor
    ```
-6. **Roll out to existing repos:** `/harness:adopt` shows DIFFERS rows for committed files that changed; accept the ones you want.
+   Doctor warns on DIST-3 when the plugin is newer than the version recorded at setup.
+6. **Roll out to existing repos:** `/harness:adopt` shows DIFFERS rows, with diffs, for committed harness files that changed; accept the ones you want.
 
 ## Saving a workflow so every device gets it
 

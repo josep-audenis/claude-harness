@@ -1,7 +1,7 @@
 # Roadmap
 
 ## Build (v1)
-- [ ] Phases 1–10 of BUILD.md, with CI green on three operating systems
+- [x] Phases 1–10 of BUILD.md, with CI green on three operating systems (2026-10-03)
 - [ ] Installed on the first device; `/harness:doctor --live` passes
 - [ ] First new app from `/harness:new-app`
 - [ ] First existing repo adopted

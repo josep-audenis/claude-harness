@@ -4,7 +4,7 @@ A cloud routine that turns one `agent-ready` defect per night into a PR for the 
 
 ## Preconditions
 
-- `/harness:doctor` in the repo shows it as harnessed. Routines clone the repo fresh and never see your `~/.claude/` or local plugins, so the committed Stop gate, reviewer and `harness.json` must be in the repo.
+- `/harness:doctor` in the repo shows it as harnessed (CTX-2 to CTX-4, NIGHT-3, GATE-1 proven, REV-1, REV-3). Routines clone the repo fresh and never see your `~/.claude/` or local plugins, so the committed Stop gate (`.claude/hooks/`), reviewer (`.claude/agents/reviewer.md`) and `harness.json` must be in the repo. `/harness:new-app` and `/harness:adopt` put them there.
 - The ruleset on `main` is active, so a bad PR can't merge without you.
 
 ## Create the routine
@@ -28,4 +28,4 @@ Use the **Defect** issue form. It gives the issue the `agent-ready` label, a sta
 
 - Open the run, not just its status: a green status only means the session exited cleanly.
 - Review the PR like any other. The routine never merges.
-- Daily runs are capped per account (Anthropic's launch post said 5 on Pro, 15 on Max). Check claude.ai/code/routines for your current count.
+- Routine runs draw on your subscription usage like any session. Starts are also limited per hour: 100 scheduled runs per hour per account, per the routines docs (checked 2026-10-03). Schedule off the hour, e.g. 02:17, because runs exactly on the hour can start late.

@@ -72,6 +72,9 @@ Checked 2026-10-02 against the raw Markdown of code.claude.com/docs/en/<page>.md
 | `claude plugin validate .` and `./plugins/harness` | local CLI 2.1.92 | 2026-10-03 | both `Validation passed` |
 | `claude --plugin-dir ./plugins/harness --init-only` | cli-reference, local run | 2026-10-03 | plugin loads: hooks.json, 4 agents, 5 skills. This is the run that exposed the exec-form gap on 2.1.92 |
 | Native installer `curl -fsSL https://claude.ai/install.sh \| bash` (CI validate job) | setup | 2026-10-03 | confirmed |
+| `worktree.baseRef`: `"fresh"` (default) or `"head"`, any settings file; subagent worktrees follow it | settings-reference, worktrees | 2026-10-03 | confirmed; set to `"head"` in the template `.claude/settings.json` |
+| Plugin `workflows/` dir, `/<plugin>:<name>` | plugins-reference, workflows | 2026-10-03 | `plugins/harness/workflows/.gitkeep` added; `claude plugin validate` passes with it |
+| `SDKResultMessage` fields: `num_turns`, `total_cost_usd`, `usage`, `duration_ms`, `result`, `subtype`, `is_error` | agent-sdk/typescript | 2026-10-03 | confirmed; parsed by `evals/lib/stream.mjs` |
 
 ## How exec-form hooks are written
 ```json
@@ -82,7 +85,7 @@ Checked 2026-10-02 against the raw Markdown of code.claude.com/docs/en/<page>.md
 The committed repo copy uses `"args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-gate.mjs"]`.
 
 ## How skills reference scripts
-The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --home ~ ...`. Claude Code substitutes the path when the skill loads. The variable isn't in the Bash tool's environment, so it must be written in the skill body. Skills don't use `` !`cmd` `` injection, because it runs through bash (Git Bash on Windows) and a non-zero exit aborts the skill.
+The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --dry-run`. Without `--home`, scripts use `CLAUDE_CONFIG_DIR` or the real home. Claude Code substitutes the path when the skill loads. The variable isn't in the Bash tool's environment, so it must be written in the skill body. Skills don't use `` !`cmd` `` injection, because it runs through bash (Git Bash on Windows) and a non-zero exit aborts the skill.
 
 ## Dropped (couldn't verify)
 | Item | Why | Date |
@@ -187,5 +190,95 @@ The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --home 
 - 2026-10-02 **DEV-4**: `extraKnownMarketplaces.<name>.autoUpdate: true` could make auto-update part of the floor instead of a manual `/plugin` step. Not done yet, because the marketplace source differs per device (local directory on the dev box, GitHub elsewhere).
 
 ## Open questions for Josep
-- 2026-10-02 Claude Code on this PC is **2.1.92**. Run `claude update` before installing the plugin (`/auto-mode-setup` needs 2.1.233+ on Windows).
-- 2026-10-02 Does the Linux device run Claude Code natively? If yes, the sandbox works there; if it's WSL2, it also works.
+- 2026-10-02 Claude Code on the Windows PC was **2.1.92** at kickoff. Run `claude update` before installing the plugin: hooks need ≥ 2.1.139, and `/auto-mode-setup` on Windows needs ≥ 2.1.233.
+- 2026-10-02 Does the Linux device run Claude Code natively or under WSL2? The sandbox works on both; it only changes the device notes.
+- 2026-10-03 REV-2 code-owner review: accept the proposal (require PR + `ci` + `review`; CODEOWNERS only requests your review), or add an admin bypass to the ruleset?
+- 2026-10-03 Accept the proposed SPEC changes above (GATE-2 brief exemption, SEC-5 credential reads, SEC-4 platforms, DEV-1 version floors, NIGHT-4 hourly limits, LOOP-2 `test-diff.mjs`)? SPEC.md is untouched until you edit it.
+
+## Not yet proven live (needs a real session, real GitHub or real tokens)
+- Plugin hooks firing in a real Claude Code ≥ 2.1.139 session, and `doctor --live` (the plugin Stop-hook bug, claude-code#10412).
+- The Windows toast from `notify.mjs`.
+- `review.yml` with `anthropics/claude-code-action@v1` on a real PR (needs `CLAUDE_CODE_OAUTH_TOKEN`).
+- `gh repo create` in `new-app.mjs`, and `/harness:adopt` opening a PR.
+- The skills' judgement halves (brief, verify-done, review-loop, adopt, new-app) driven by a model.
+- `evals/run.mjs` against the real `claude` binary (parsing of real stream-json), and experiment 001.
+- Playwright e2e of the app template; CI's `e2e` job covers it in generated apps.
+
+## Requirement status (2026-10-03)
+Implemented means the code or file exists and the named test covers it. Partial means guidance or process only, or a part that's still the human's.
+
+| ID | Status | Covered by |
+|---|---|---|
+| DEV-1 | implemented | doctor.test (tools, version floor 2.1.139 MUST / 2.1.233 SHOULD) |
+| DEV-2 | implemented | doctor.test (installed + enabled) |
+| DEV-3 | implemented | setup.test (merge, second run byte-identical, real settings shape survives) |
+| DEV-4 | partial | manual `/plugin` → Marketplaces step in device-setup.md; not checked by doctor |
+| DEV-5 | implemented | CI matrix (ubuntu, macos, windows; Node 20 and 22); hooks.test (exec form, built-ins only) |
+| DEV-6 | implemented | setup.test (device record), doctor.test |
+| SEC-1 | implemented | setup.test, doctor.test |
+| SEC-2 | implemented | setup.test (plan kept and logged), doctor.test |
+| SEC-3 | partial | doctor WARN until `autoMode.environment` exists; running `/auto-mode-setup` is the user's |
+| SEC-4 | implemented | setup.test (sandbox.enabled), doctor.test (SKIP on win32) |
+| SEC-5 | implemented | gate-bash.test (BUILD table + 40 forms, credential reads) |
+| SEC-6 | implemented | setup.test (no bypass), doctor.test |
+| SEC-7 | partial | night-shift.md (connectors removed, one repo); not enforceable from here |
+| CTX-1 | implemented | setup.test (markers, CRLF, text outside kept) |
+| CTX-2 | implemented | doctor.test, templates.test (≤ 45 lines); adopt skill trims |
+| CTX-3 | implemented | doctor.test, adopt.test, agents-skills.test (check.mjs) |
+| CTX-4 | implemented | templates.test, doctor.test; adopt skill seeds entries |
+| CTX-5 | implemented | hooks.test (session-state) |
+| CTX-6 | partial | convention only; nothing generates `.claude/rules/` |
+| CTX-7 | implemented | templates.test, doctor.test |
+| GATE-1 | implemented | stop-gate.test |
+| GATE-2 | implemented | stop-gate.test, agents-skills.test (brief-commit exemption) |
+| GATE-3 | implemented | stop-gate.test (including the leaked env var case), templates.test |
+| GATE-4 | implemented | hooks.test (format-changed) |
+| GATE-5 | implemented | every hook test asserts exit 2 to block, 0 otherwise |
+| GATE-6 | implemented | doctor.test (proof, broken gate caught), new-app.test |
+| GATE-7 | implemented | the floor never sets `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` (setup.test checks the floor's keys) |
+| AGT-1 | implemented | agents-skills.test (tools, models, worktree, read-only reviewer) |
+| AGT-2 | implemented | agents-skills.test (skill structure, /goal contents); unproven live |
+| AGT-3 | implemented | agents-skills.test (check.mjs `--all`); skill unproven live |
+| AGT-4 | partial | `plugins/harness/workflows/` exists; no saved workflows yet |
+| AGT-5 | implemented | doctor.test (agent teams not in the floor) |
+| LOOP-1 | partial | night-shift.md preconditions; doctor marks a repo harnessed |
+| LOOP-2 | implemented | agents-skills.test (/goal names check.mjs, test-diff.mjs, turn cap) |
+| LOOP-3 | partial | daily-workflow.md guidance |
+| LOOP-4 | partial | /goal template and brief budget; not enforced for arbitrary loops |
+| LOOP-5 | partial | daily-workflow.md, night-shift.md |
+| LOOP-6 | implemented | setup.test (loop.md), doctor.test |
+| REV-1 | implemented | templates.test (`ci`, `review`); review.yml unproven live |
+| REV-2 | partial | doctor reads branch rules via `gh api`; ruleset is manual; code-owner proposal open |
+| REV-3 | implemented | templates.test, adopt.test, new-app.test |
+| REV-4 | implemented | floor denies `gh pr merge` (setup.test); agents and skills never merge |
+| REV-5 | implemented | agents-skills.test (skill present, user-invoked); unproven live |
+| NIGHT-1 | implemented | templates.test (defect form) |
+| NIGHT-2 | partial | prompt in SPEC §6.7 and night-shift.md; the routine is created by the user |
+| NIGHT-3 | implemented | doctor.test (NIGHT-3 row), templates.test (committed layer runs without the plugin) |
+| NIGHT-4 | partial | night-shift.md (off the hour; hourly limits) |
+| REC-1 | implemented | hooks.test (log-bash) |
+| REC-2 | partial | personal rules, implementer agent, CLAUDE.md skeleton |
+| REC-3 | implemented | brief skill writes `docs/briefs/<id>.md`; templates ship `docs/briefs/` |
+| COST-1 | implemented | setup.test (effortLevel high), doctor.test |
+| COST-2 | implemented | floor env + agent `model` fields (agents-skills.test) |
+| COST-3 | partial | daily-workflow.md |
+| DIST-1 | implemented | CI validate job; marketplace.test |
+| DIST-2 | implemented | marketplace.test (CHANGELOG has the version) |
+| DIST-3 | implemented | doctor.test (DIST-3 WARN) |
+| DIST-4 | implemented | `.github/workflows/test.yml`; marketplace.test |
+| NEW-1 | implemented | new-app.test (`--no-remote`, placeholders, gate proven, doctor PASS); `gh repo create` unproven live |
+| ADOPT-1 | implemented | adopt.test (dirty refused, branch, merges, CLAUDE.md untouched) |
+| ADOPT-2 | implemented | adopt.test (node, python, go, rust drafts); "make them pass" is the skill's job |
+| ADOPT-3 | partial | adopt skill (trim with reasons, seed features, prove gate, PR); not automated |
+| ADOPT-4 | implemented | adopt.test (DIFFERS with diff, `--update`) |
+| LAB-1 | implemented | experiments.test (001 planned) |
+| LAB-2 | implemented | lab.test (fresh copy, isolation flags, turn cap) |
+| LAB-3 | implemented | lab.test (every field; compare table and deltas) |
+| LAB-4 | implemented | lab.test (stub scenarios, no tokens) |
+| LAB-5 | implemented | lab.test (raw gitignored, summaries not) |
+| LAB-6 | partial | 001 prepared with ≥ 3 runs and a decision rule; no runs yet |
+| DOC-1 | implemented | docs.test (README links every guide; links, skills, scripts and npm scripts in docs exist) |
+| DOC-2 | implemented | docs.test (records 0001–0010 indexed with template sections) |
+| DOC-3 | partial | claude-code-primitives.md re-verified with check dates; other knowledge files cite the workshop decks |
+| DOC-4 | implemented | this file |
+| DOC-5 | implemented | CHANGELOG.md 1.0.0 |

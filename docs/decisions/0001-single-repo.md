@@ -15,4 +15,5 @@ The harness has to reach several laptops on different operating systems, new app
 ## Consequences
 - Updates reach devices through `/plugin` versioning.
 - Templates are tested in this repo's CI.
-- The repo is private, so every device needs non-interactive git credentials.
+- The repo was planned as private; Josep chose to keep it **public** (2026-10-02), so any device can add the marketplace without credentials. Nothing in it is secret. Devices still run `gh auth setup-git`, so that apps and the night shift can push non-interactively.
+- The marketplace is just `marketplace.json` in this repo, not a listing in Anthropic's directory. The development machine can add the local clone (`/plugin marketplace add C:\CODE\claude-harness`) and get edits without version bumps.

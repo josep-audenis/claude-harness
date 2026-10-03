@@ -26,11 +26,27 @@ Josep's lab and distribution point for agent harnesses: the requirements, a Clau
 | `docs/knowledge/` | harness and loop engineering concepts, Claude Code primitives, research findings, sources |
 | `docs/decisions/` | why things are the way they are |
 | `evals/`, `experiments/` | the lab: tasks, runner, experiment records |
+| `test/`, `tools/` | the test suite (`npm test`) and `sync-templates` |
 | `ROADMAP.md`, `NOTES.md`, `CHANGELOG.md` | what's next, what's verified, what shipped |
+
+## Skills
+
+| Command | Does |
+|---|---|
+| `/harness:setup` | applies the device floor to `~/.claude/` (preview, backup, `--undo`) |
+| `/harness:doctor` | checks the device and the current repo against SPEC; `--live` proves the Stop hook |
+| `/harness:new-app <name>` | creates a harnessed Next.js app and its GitHub repo |
+| `/harness:adopt` | retrofits an existing repo on `harness/adopt` and opens a PR |
+| `/harness:brief <idea>` | brief, feature entry, failing tests and a `/goal`, with no implementation |
+| `/harness:verify-done [id]` | one row per definition-of-done line, with evidence |
+| `/harness:review-loop [pr]` | answers CI and review findings on the PR, for up to 3 rounds; never merges |
 
 ## Quick start on a new device
 
+Needs Git, Node ≥ 20, `gh` and Claude Code ≥ 2.1.139: older versions silently skip every harness hook. Details: [device-setup.md](docs/guides/device-setup.md).
+
 ```
+claude update
 gh auth login && gh auth setup-git
 claude
 /plugin marketplace add josep-audenis/claude-harness
