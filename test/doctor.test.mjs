@@ -143,6 +143,23 @@ test('doctor: Claude Code too old for exec-form hooks is a MUST failure; below 2
   assert.deepEqual([at('2.1.139').status, at('2.1.200').status, at('2.1.233').status], ['WARN', 'WARN', 'PASS']);
 });
 
+test('doctor: checks the Claude Code running the session (desktop app), and warns about an old terminal claude', () => {
+  const home = tmpdir('home-doc-session');
+  const OLD_PATH_CLAUDE = path.join(ROOT, 'test', 'fixtures', 'claude-old-stub.mjs');
+  const r = spawnSync(process.execPath, [DOCTOR, '--home', home, '--json', '--no-repo'], {
+    env: childEnv({ CLAUDE_CODE_EXECPATH: STUB, CLAUDE_STUB_VERSION: '2.1.286', HARNESS_PATH_CLAUDE_BIN: OLD_PATH_CLAUDE }, home),
+    encoding: 'utf8',
+  });
+  const rows = byId(JSON.parse(r.stdout));
+  assert.equal(rows['DEV-1 claude'].status, 'PASS');
+  assert.match(rows['DEV-1 claude'].detail, /2\.1\.286 \(this session\)/);
+  assert.equal(rows['DEV-1 terminal'].status, 'WARN');
+  assert.match(rows['DEV-1 terminal'].detail, /2\.1\.92 is older than 2\.1\.139: terminal sessions run no harness hooks \(this session runs 2\.1\.286\)/);
+
+  const plain = spawnSync(process.execPath, [DOCTOR, '--home', home, '--json', '--no-repo', '--claude-bin', STUB], { env: childEnv({}, home), encoding: 'utf8' });
+  assert.ok(!('DEV-1 terminal' in byId(JSON.parse(plain.stdout))), 'no terminal row when not run from a session');
+});
+
 test('doctor: table output and no --live by default', () => {
   const home = tmpdir('home-doc-table');
   const r = spawnSync(process.execPath, [DOCTOR, '--home', home, '--claude-bin', STUB, '--no-repo'], { env: childEnv({}, home), encoding: 'utf8' });

@@ -173,6 +173,10 @@ The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --dry-r
   - The variant is **generated** by `experiments/001-stop-gate/make-variant.mjs` (gitignored `variant/`, with `VARIANT.json` recording the baseline version and commit), not committed as a copy. This guarantees the one-change rule against whatever baseline is run, and avoids a second copy of the plugin drifting. A test proves the only differing file is `hooks/hooks.json`, minus `Stop`.
   - The cost estimate is given in tokens and wall clock, with a pilot that measures `costUsd`, rather than a dollar figure from memory.
   - The hypothesis is judged excluding `premature-done-trap`, which the gate can't see by design (P6); that task is kept as a control.
+- 2026-10-03 **Doctor checks the Claude Code running the session**:
+  - The desktop app (Code tab) bundles its own Claude Code (2.1.286 on this PC), separate from the `claude` on PATH (2.1.92). It exposes the binary as `CLAUDE_CODE_EXECPATH`, plus `AI_AGENT=claude-code_2-1-286_agent` and `CLAUDE_CODE_ENTRYPOINT=claude-desktop`.
+  - Doctor now resolves the binary in this order: `--claude-bin`/`HARNESS_CLAUDE_BIN`, then `CLAUDE_CODE_EXECPATH`, then PATH. When run from a session, it adds a `DEV-1 terminal` row that warns if the PATH `claude` is too old for the hooks.
+  - Before this fix, doctor in the app wrongly failed DEV-1. `--live` also uses the resolved binary.
 - 2026-10-03 **plugin.json created in phase 3** (BUILD puts it in phase 7) because setup records the plugin version.
 - 2026-10-03 **Floor deny `Read(**/.env.*)`** also blocks `.env.example`. It's kept because SEC-1 requires it; Claude can still read examples if the user pastes them or renames them, e.g. to `env.example`.
 - 2026-10-03 **Mutation check of phase 3**: making the floor merge overwrite existing scalars turned the SEC-2 setup test red.

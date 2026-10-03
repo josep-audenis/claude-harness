@@ -17,7 +17,7 @@ const MIN_CLAUDE_HOOKS = [2, 1, 139]; // hook `args` (exec form) added in 2.1.13
 const MIN_CLAUDE = [2, 1, 233]; // /auto-mode-setup on native Windows
 
 function parseArgs(argv) {
-  const a = { home: null, repo: null, noRepo: false, live: false, json: false, claudeBin: process.env.HARNESS_CLAUDE_BIN || 'claude' };
+  const a = { home: null, repo: null, noRepo: false, live: false, json: false, claudeBin: null };
   for (let i = 0; i < argv.length; i++) {
     const v = argv[i];
     if (v === '--home') a.home = argv[++i];
@@ -27,6 +27,19 @@ function parseArgs(argv) {
     else if (v === '--json') a.json = true;
     else if (v === '--claude-bin') a.claudeBin = argv[++i];
     else throw new Error(`Unknown argument: ${v}`);
+  }
+  // Which Claude Code to check: --claude-bin / HARNESS_CLAUDE_BIN, else the binary running this
+  // session (CLAUDE_CODE_EXECPATH, set by the CLI and the desktop app), else `claude` on PATH.
+  const session = process.env.CLAUDE_CODE_EXECPATH;
+  if (a.claudeBin || process.env.HARNESS_CLAUDE_BIN) {
+    a.claudeBin ??= process.env.HARNESS_CLAUDE_BIN;
+    a.claudeSource = 'given';
+  } else if (session && fs.existsSync(session)) {
+    a.claudeBin = session;
+    a.claudeSource = 'session';
+  } else {
+    a.claudeBin = 'claude';
+    a.claudeSource = 'path';
   }
   return a;
 }
@@ -87,16 +100,35 @@ function deviceChecks(args) {
     const auth = tool('gh', ['auth', 'status']);
     row('DEV-1 gh auth', 'MUST', auth.ok ? 'PASS' : 'FAIL', auth.ok ? 'gh is authenticated' : 'gh is not authenticated', 'gh auth login && gh auth setup-git');
   }
+  // The Claude Code that matters is the one running this session (the desktop app bundles its own,
+  // exposed as CLAUDE_CODE_EXECPATH); the `claude` on PATH is what terminal sessions use.
+  const label = { session: 'this session', path: 'PATH', given: '--claude-bin' }[args.claudeSource];
   const cv = tool(args.claudeBin, ['--version']);
+  let sessionVersion = null;
   if (!cv.ok) {
-    row('DEV-1 claude', 'MUST', 'FAIL', 'Claude Code not found on PATH', 'Install Claude Code with the native installer');
+    row('DEV-1 claude', 'MUST', 'FAIL', `Claude Code not found (${label})`, 'Install Claude Code with the native installer');
   } else {
     const v = versionOf(cv.out);
+    sessionVersion = v.join('.');
     if (!atLeast(v, MIN_CLAUDE_HOOKS)) {
-      row('DEV-1 claude', 'MUST', 'FAIL', `Claude Code ${v.join('.')}: exec-form hooks need ${MIN_CLAUDE_HOOKS.join('.')}+, so every harness hook is silently inert`, 'claude update');
+      row('DEV-1 claude', 'MUST', 'FAIL', `Claude Code ${v.join('.')} (${label}): exec-form hooks need ${MIN_CLAUDE_HOOKS.join('.')}+, so every harness hook is silently inert`, 'claude update');
     } else {
       const ok = atLeast(v, MIN_CLAUDE);
-      row('DEV-1 claude', 'SHOULD', ok ? 'PASS' : 'WARN', `Claude Code ${v.join('.')}${ok ? '' : ` (/auto-mode-setup on Windows needs ${MIN_CLAUDE.join('.')}+)`}`, 'claude update');
+      row('DEV-1 claude', 'SHOULD', ok ? 'PASS' : 'WARN', `Claude Code ${v.join('.')} (${label})${ok ? '' : ` (/auto-mode-setup on Windows needs ${MIN_CLAUDE.join('.')}+)`}`, 'claude update');
+    }
+  }
+  if (args.claudeSource === 'session') {
+    const pv = tool(process.env.HARNESS_PATH_CLAUDE_BIN || 'claude', ['--version']);
+    if (pv.ok) {
+      const v = versionOf(pv.out);
+      const ok = atLeast(v, MIN_CLAUDE_HOOKS);
+      row(
+        'DEV-1 terminal',
+        'SHOULD',
+        ok ? 'PASS' : 'WARN',
+        ok ? `terminal \`claude\` ${v.join('.')}` : `terminal \`claude\` ${v.join('.')} is older than ${MIN_CLAUDE_HOOKS.join('.')}: terminal sessions run no harness hooks (this session runs ${sessionVersion ?? '?'})`,
+        'claude update (in a terminal)',
+      );
     }
   }
 
