@@ -177,6 +177,17 @@ The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --dry-r
   - The desktop app (Code tab) bundles its own Claude Code (2.1.286 on this PC), separate from the `claude` on PATH (2.1.92). It exposes the binary as `CLAUDE_CODE_EXECPATH`, plus `AI_AGENT=claude-code_2-1-286_agent` and `CLAUDE_CODE_ENTRYPOINT=claude-desktop`.
   - Doctor now resolves the binary in this order: `--claude-bin`/`HARNESS_CLAUDE_BIN`, then `CLAUDE_CODE_EXECPATH`, then PATH. When run from a session, it adds a `DEV-1 terminal` row that warns if the PATH `claude` is too old for the hooks.
   - Before this fix, doctor in the app wrongly failed DEV-1. `--live` also uses the resolved binary.
+- 2026-10-03 **v1.1 build (task-by-task, ledger, QA)**, from online research (sources.md, decision 0011):
+  - `ledger.mjs` is the only writer of `docs/briefs/<id>.ledger.md` (§6.8). It parses the brief's `### T<n>:` headings, and `status --check` gives `/goal` an exit code.
+  - **SubagentStop gate:** the same `stop-gate.mjs`, matcher `harness:implementer|implementer`. On SubagentStop it uses the input `cwd` and never defers (the committed copy only registers Stop).
+  - Checks receive `HARNESS_GATE_EVENT` (`Stop` or `SubagentStop`), which the `doctor --live` GATE-8 probe uses to prove the gate ran in the worktree.
+  - **Unverified:** whether SubagentStop's `cwd` is the subagent's worktree. If the live probe shows the main checkout, the fallback is to resolve the worktree from `git worktree list` (newest worktree branch) or `agent_transcript_path`.
+- 2026-10-03 **qa-server on Windows (found while testing)**:
+  - With `shell: true`, the launching `cmd.exe` can exit while the server it started keeps running, still carrying the dead parent's ParentProcessId. `taskkill /T` on the recorded PID then misses it.
+  - `detached: true` would keep cmd alive, but on Windows the Node children of a detached cmd lose their stdout/stderr, even when redirected to a file.
+  - Fix: not detached on Windows. Stop, status and liveness walk the process tree by ParentProcessId via `Get-CimInstance Win32_Process`, only including processes created after the server start, so a recycled PID never pulls in an unrelated tree.
+  - POSIX uses a detached process group. Tests prove no process remains and nothing is written into the repo.
+- 2026-10-03 **First live hook evidence**: in the desktop app (Claude Code 2.1.286) the plugin's PostToolUse Bash log hook wrote this session's commands to `~/.claude/logs/bash.jsonl`, so exec-form plugin hooks work in the app. The Stop and SubagentStop gates are still unproven live: `doctor --live`.
 - 2026-10-03 **plugin.json created in phase 3** (BUILD puts it in phase 7) because setup records the plugin version.
 - 2026-10-03 **Floor deny `Read(**/.env.*)`** also blocks `.env.example`. It's kept because SEC-1 requires it; Claude can still read examples if the user pastes them or renames them, e.g. to `env.example`.
 - 2026-10-03 **Mutation check of phase 3**: making the floor merge overwrite existing scalars turned the SEC-2 setup test red.
@@ -185,8 +196,8 @@ The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --dry-r
 ## Proposed spec changes
 - 2026-10-02 **SEC-5**: add "credential reads (`get-secret-value`, `ssm get-parameter*`, `--with-decryption`, `gcloud secrets versions access`) are denied before verb classification". Consider sending non-read-only `aws`/`gcloud` verbs to `ask` instead of `deny`: the workshop's gate never denies a write outright, it asks a human. An `ask` from a hook forces a real prompt even in auto mode.
 - 2026-10-02 **REV-2**: "code-owner review required" can't be satisfied by a solo developer, because agents push and open PRs as the same GitHub user, and GitHub refuses self-approval. Proposal: require PR + status checks `ci` and `review`; keep CODEOWNERS (REV-3) so the owner is auto-requested; keep REV-4 (agents never merge); optionally allow admin bypass.
-- 2026-10-03 **GATE-2**: add "or HEAD is a `brief(<id>)` commit containing only the brief, the feature_list entry and test files, with a clean tree". Without it, AGT-2's red tests make the brief session unstoppable.
-- 2026-10-03 **LOOP-2**: name `test-diff.mjs <brief-sha>` as the executed form of "no test file modified".
+- 2026-10-03 **GATE-2**: brief-commit exemption. **Adopted in SPEC v1.1.**
+- 2026-10-03 **LOOP-2**: `test-diff.mjs <brief-sha>` as the executed "no test file modified". **Adopted in SPEC v1.1** (§6.5 template).
 - 2026-10-02 **SEC-4**: say "on macOS, Linux and WSL2; native Windows has no sandbox".
 - 2026-10-02 **DEV-1**: add a Claude Code version floor: MUST ≥ **2.1.139** (exec-form hooks; below it every hook is inert, observed 2026-10-03), SHOULD ≥ **2.1.233** (`/auto-mode-setup` on native Windows). Doctor implements both.
 - 2026-10-02 **NIGHT-4 / §8**: routines have hourly limits (100 scheduled runs per hour per account) and draw on subscription usage; drop the "daily routine cap" wording.
@@ -204,11 +215,14 @@ The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --dry-r
 - The Windows toast from `notify.mjs`.
 - `review.yml` with `anthropics/claude-code-action@v1` on a real PR (needs `CLAUDE_CODE_OAUTH_TOKEN`).
 - `gh repo create` in `new-app.mjs`, and `/harness:adopt` opening a PR.
-- The skills' judgement halves (brief, verify-done, review-loop, adopt, new-app) driven by a model.
+- The skills' judgement halves (brief, verify-done, review-loop, adopt, new-app, **build**, learn) driven by a model.
+- **GATE-8 live:** the SubagentStop gate firing for the implementer and the hook `cwd` being its worktree (`doctor --live` GATE-8 probe).
+- **The `qa` agent** driving a real app with Playwright, and its rubric calibration.
+- A full `/harness:build` of a multi-task brief, including Opus escalation and the draft PR.
 - `evals/run.mjs` against the real `claude` binary (parsing of real stream-json), and experiment 001.
 - Playwright e2e of the app template; CI's `e2e` job covers it in generated apps.
 
-## Requirement status (2026-10-03)
+## Requirement status (2026-10-03, SPEC v1.1)
 Implemented means the code or file exists and the named test covers it. Partial means guidance or process only, or a part that's still the human's.
 
 | ID | Status | Covered by |
@@ -230,7 +244,7 @@ Implemented means the code or file exists and the named test covers it. Partial 
 | CTX-2 | implemented | doctor.test, templates.test (≤ 45 lines); adopt skill trims |
 | CTX-3 | implemented | doctor.test, adopt.test, agents-skills.test (check.mjs) |
 | CTX-4 | implemented | templates.test, doctor.test; adopt skill seeds entries |
-| CTX-5 | implemented | hooks.test (session-state) |
+| CTX-5 | implemented | hooks.test (session-state), ledger.test (ledger summary and next task injected on feat/<id>) |
 | CTX-6 | partial | convention only; nothing generates `.claude/rules/` |
 | CTX-7 | implemented | templates.test, doctor.test |
 | GATE-1 | implemented | stop-gate.test |
@@ -240,11 +254,16 @@ Implemented means the code or file exists and the named test covers it. Partial 
 | GATE-5 | implemented | every hook test asserts exit 2 to block, 0 otherwise |
 | GATE-6 | implemented | doctor.test (proof, broken gate caught), new-app.test |
 | GATE-7 | implemented | the floor never sets `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` (setup.test checks the floor's keys) |
+| GATE-8 | implemented | stop-gate.test (SubagentStop blocks red in the worktree, passes green, never defers, HARNESS_GATE_EVENT), hooks.test (matcher); live probe in doctor --live |
 | AGT-1 | implemented | agents-skills.test (tools, models, worktree, read-only reviewer) |
 | AGT-2 | implemented | agents-skills.test (skill structure, /goal contents); unproven live |
 | AGT-3 | implemented | agents-skills.test (check.mjs `--all`); skill unproven live |
 | AGT-4 | partial | `plugins/harness/workflows/` exists; no saved workflows yet |
 | AGT-5 | implemented | doctor.test (agent teams not in the floor) |
+| AGT-6 | implemented | agents-skills.test (build skill: stop reasons, rulings, rounds, escalation, never merges), ledger.test; unproven live |
+| AGT-7 | implemented | qa-server.test (start, health, tree kill, timeout, n/a), agents-skills.test (qa agent read-only, rubric, calibration); unproven live |
+| AGT-8 | implemented | agents-skills.test (skill present, model-invocable) |
+| AGT-9 | implemented | gate-bash.test (bashDeny enforced, invalid rules ignored), agents-skills.test (learn user-invoked) |
 | LOOP-1 | partial | night-shift.md preconditions; doctor marks a repo harnessed |
 | LOOP-2 | implemented | agents-skills.test (/goal names check.mjs, test-diff.mjs, turn cap) |
 | LOOP-3 | partial | daily-workflow.md guidance |
@@ -263,6 +282,7 @@ Implemented means the code or file exists and the named test covers it. Partial 
 | REC-1 | implemented | hooks.test (log-bash) |
 | REC-2 | partial | personal rules, implementer agent, CLAUDE.md skeleton |
 | REC-3 | implemented | brief skill writes `docs/briefs/<id>.md`; templates ship `docs/briefs/` |
+| REC-4 | implemented | ledger.test (CLI round trip, --check); build skill commits the ledger after each change |
 | COST-1 | implemented | setup.test (effortLevel high), doctor.test |
 | COST-2 | implemented | floor env + agent `model` fields (agents-skills.test) |
 | COST-3 | partial | daily-workflow.md |

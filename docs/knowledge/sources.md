@@ -28,3 +28,12 @@
 - Meta-Harness: arXiv 2603.28052
 - OpenAI, *Harness engineering: leveraging Codex in an agent-first world*: https://openai.com/index/harness-engineering/
 - Plugin Stop-hook bug: https://github.com/anthropics/claude-code/issues/10412
+
+## Harness setups studied for v1.1 (2026-10-03)
+- Anthropic, *Harness design for long-running application development* (Mar 2026). Planner, generator and a Playwright evaluator calibrated with few-shot examples; "out of the box, Claude is a poor QA agent"; context resets with file handoffs; strip harness parts as models improve: https://www.anthropic.com/engineering/harness-design-long-running-apps
+- obra/superpowers (skills `writing-plans`, `subagent-driven-development`, `executing-plans`, `verification-before-completion`, `systematic-debugging`). Bite-sized tasks; a fresh implementer and a reviewer per task; capped fix rounds escalating to a stronger model; a ledger of `Ruling:` lines; only four reasons to stop: https://github.com/obra/superpowers
+- `ralph-loop`, official plugin (Ralph Wiggum technique). A Stop-hook loop with a completion promise and `--max-iterations`; `/goal` covers this natively: https://github.com/anthropics/claude-plugins-official/tree/main/plugins/ralph-loop
+- HumanLayer `.claude/commands` (`research_codebase`, `create_plan`, `implement_plan`, `create_handoff`/`resume_handoff`). Research, plan, implement with intentional compaction and checkbox plans: https://github.com/humanlayer/humanlayer/tree/main/.claude/commands
+- Chachamaru127/claude-code-harness. Plan → work → review → sync → release; "unknowns stay unknown"; reversible work continues on stated assumptions: https://github.com/Chachamaru127/claude-code-harness
+- GitHub spec-kit (constitution → specify → plan → tasks → implement): https://github.blog/2025-09-02-spec-driven-development-with-ai-get-started-with-a-new-open-source-toolkit/
+- nizos/tdd-guard (PreToolUse enforcement of test-first) and `hookify` (official plugin: rules from corrections). Inspiration for `/harness:learn` and `bashDeny`: https://github.com/nizos/tdd-guard · https://github.com/anthropics/claude-plugins-official/tree/main/plugins/hookify

@@ -120,6 +120,7 @@ test('hooks.json: exec form, every script exists, events match BUILD §3.1', () 
     'PostToolUse:Bash': 'log-bash.mjs',
     'PostToolUse:Edit|Write': 'format-changed.mjs',
     'Stop:': 'stop-gate.mjs',
+    'SubagentStop:harness:implementer|implementer': 'stop-gate.mjs',
     'Notification:': 'notify.mjs',
   });
 });

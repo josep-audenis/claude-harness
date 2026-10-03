@@ -37,9 +37,12 @@ Josep's lab and distribution point for agent harnesses: the requirements, a Clau
 | `/harness:doctor` | checks the device and the current repo against SPEC; `--live` proves the Stop hook |
 | `/harness:new-app <name>` | creates a harnessed Next.js app and its GitHub repo |
 | `/harness:adopt` | retrofits an existing repo on `harness/adopt` and opens a PR |
-| `/harness:brief <idea>` | brief, feature entry, failing tests and a `/goal`, with no implementation |
+| `/harness:brief <idea>` | brief with an ordered task list, feature entry, failing tests and a `/goal`, with no implementation |
+| `/harness:build <id>` | builds the brief task by task without you: implementer, reviewer and fix rounds per task, QA in the browser, final review, draft PR |
 | `/harness:verify-done [id]` | one row per definition-of-done line, with evidence |
 | `/harness:review-loop [pr]` | answers CI and review findings on the PR, for up to 3 rounds; never merges |
+| `/harness:learn [what went wrong]` | turns a repeated mistake into a rule at the right level (CLAUDE.md line, path rule, skill, or an executed Bash rule) |
+| systematic-debugging (used automatically) | root cause before any fix; failing test first; `BLOCKED.md` after two failed attempts |
 
 ## Quick start on a new device
 

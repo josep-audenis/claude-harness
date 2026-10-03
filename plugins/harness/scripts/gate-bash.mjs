@@ -1,7 +1,8 @@
 // PreToolUse hook on Bash (SEC-5): deny dangerous commands with exit 2 and a reason.
 // The gate never grants: anything it doesn't deny exits 0 and the permission rules decide.
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readStdinJson, samePath } from './lib.mjs';
+import { readStdinJson, samePath, projectDir, readJson } from './lib.mjs';
 
 const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh', 'fish', 'pwsh', 'powershell', 'cmd']);
 const WRAPPERS = new Set(['sudo', 'doas', 'env', 'command', 'exec', 'time', 'nohup', 'nice', 'xargs']);
@@ -181,10 +182,30 @@ export function check(command, depth = 0) {
   return null;
 }
 
+// Repo rules added by /harness:learn: `.claude/harness.json` "bashDeny": [{ "pattern": "<regex>", "reason": "…" }].
+// Patterns are case-insensitive regexes tested against the whole command; invalid ones are ignored.
+export function checkRepoRules(command, dir) {
+  if (typeof command !== 'string' || !dir) return null;
+  const rules = readJson(path.join(dir, '.claude', 'harness.json'), {})?.bashDeny;
+  if (!Array.isArray(rules)) return null;
+  for (const rule of rules) {
+    if (!rule || typeof rule.pattern !== 'string') continue;
+    let re;
+    try {
+      re = new RegExp(rule.pattern, 'i');
+    } catch {
+      continue;
+    }
+    if (re.test(command)) return `repo rule: ${rule.reason || rule.pattern}`;
+  }
+  return null;
+}
+
 // Run as a hook only when executed directly, so tests can import check().
 if (process.argv[1] && samePath(fileURLToPath(import.meta.url), process.argv[1])) {
   const input = await readStdinJson();
-  const reason = check(input?.tool_input?.command);
+  const command = input?.tool_input?.command;
+  const reason = check(command) ?? checkRepoRules(command, projectDir(input));
   if (reason) {
     process.stderr.write(
       `Blocked by harness gate-bash: ${reason}.\n` +

@@ -277,6 +277,46 @@ function repoChecks(repo) {
 }
 
 // ---------- live ----------
+// GATE-8 live: dispatch the implementer subagent in a red temp repo. The probe check logs which
+// gate ran it and from which directory, and passes from its second run on (so nothing loops).
+// PASS needs 2+ SubagentStop runs from a directory other than the main checkout (its worktree).
+function liveSubagentCheck(args) {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-live-sub-'));
+  const repo = path.join(base, 'repo');
+  const log = path.join(base, 'gate-log.txt');
+  const probe = path.join(base, 'probe.mjs');
+  try {
+    fs.mkdirSync(path.join(repo, '.claude'), { recursive: true });
+    fs.writeFileSync(
+      probe,
+      `import fs from 'node:fs';\nconst ev = process.env.HARNESS_GATE_EVENT || 'unknown';\n` +
+        `fs.appendFileSync(${JSON.stringify(log)}, ev + '@' + process.cwd() + '\\n');\n` +
+        `const n = fs.readFileSync(${JSON.stringify(log)}, 'utf8').split('\\n').filter((l) => l.startsWith(ev + '@')).length;\n` +
+        'process.exit(n >= 2 ? 0 : 1);\n',
+    );
+    fs.writeFileSync(path.join(repo, '.claude', 'harness.json'), JSON.stringify({ version: 1, check: [`node "${probe.replace(/\\/g, '/')}"`] }) + '\n');
+    fs.writeFileSync(path.join(repo, 'README.md'), '# probe\n');
+    const gitEnv = { ...process.env, GIT_AUTHOR_NAME: 'probe', GIT_AUTHOR_EMAIL: 'probe@example.com', GIT_COMMITTER_NAME: 'probe', GIT_COMMITTER_EMAIL: 'probe@example.com' };
+    for (const a of [['init', '-q', '-b', 'main'], ['add', '-A'], ['commit', '-q', '-m', 'probe']]) spawnSync('git', a, { cwd: repo, env: gitEnv });
+    const prompt = 'Use the harness:implementer subagent to create a file notes.txt containing the word hello and commit it. When it returns, reply with the single word done.';
+    const r = tool(
+      args.claudeBin,
+      ['-p', prompt, '--plugin-dir', PLUGIN_ROOT, '--setting-sources', 'project', '--model', 'haiku', '--permission-mode', 'auto', '--max-turns', '12', '--output-format', 'json'],
+      { cwd: repo, timeout: 600_000, env: { ...process.env, CLAUDE_CODE_SUBAGENT_MODEL: 'haiku', CLAUDE_CODE_SUBAGENT_MODEL_FORCE: '1' } },
+    );
+    const lines = (readText(log) ?? '').split('\n').filter(Boolean);
+    const sub = lines.filter((l) => l.startsWith('SubagentStop@'));
+    const norm = (p) => path.resolve(p).toLowerCase();
+    const inWorktree = sub.some((l) => norm(l.slice('SubagentStop@'.length)) !== norm(repo));
+    if (sub.length >= 2 && inWorktree) row('GATE-8 live', 'MUST', 'PASS', `implementer SubagentStop gate blocked and the subagent continued (${sub.length} runs, in its worktree)`);
+    else if (sub.length >= 2) row('GATE-8 live', 'MUST', 'FAIL', "SubagentStop ran in the main checkout, not the subagent's worktree: the gate checks the wrong tree", 'Report it; the gate needs the worktree fallback (NOTES.md)');
+    else if (sub.length === 1) row('GATE-8 live', 'MUST', 'FAIL', 'SubagentStop gate ran once and the subagent ended anyway', 'Report it; rely on the reviewer and the main Stop gate');
+    else row('GATE-8 live', 'MUST', 'FAIL', `SubagentStop gate never ran (claude exit ${r.code ?? 'n/a'}; ${lines.length} other gate run(s))`, 'Check the implementer agent type matches the SubagentStop matcher in hooks.json');
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+}
+
 function liveCheck(args) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-live-'));
   try {
@@ -310,7 +350,10 @@ try {
     else if (args.repo) repo = start;
   }
   if (repo) repoChecks(path.resolve(repo));
-  if (args.live) liveCheck(args);
+  if (args.live) {
+    liveCheck(args);
+    liveSubagentCheck(args);
+  }
 
   const mustFailures = rows.filter((r) => r.level === 'MUST' && r.status === 'FAIL').length;
   if (args.json) {

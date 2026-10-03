@@ -26,9 +26,10 @@ const AGT1 = {
   'test-writer': { tools: ['Bash', 'Edit', 'Glob', 'Grep', 'Read', 'Write'], model: 'sonnet' },
   implementer: { tools: ['Bash', 'Edit', 'Glob', 'Grep', 'Read', 'Write'], model: 'sonnet', isolation: 'worktree' },
   reviewer: { tools: ['Bash', 'Glob', 'Grep', 'Read'], model: 'sonnet' },
+  qa: { tools: ['Bash', 'Glob', 'Grep', 'Read'], model: 'sonnet' },
 };
 
-test('agents: exactly the four AGT-1 agents with their tools and models', () => {
+test('agents: exactly the five AGT-1 agents with their tools and models', () => {
   const files = fs.readdirSync(path.join(PLUGIN, 'agents')).filter((f) => f.endsWith('.md')).sort();
   assert.deepEqual(files, Object.keys(AGT1).map((n) => `${n}.md`).sort());
   for (const [name, want] of Object.entries(AGT1)) {
@@ -52,11 +53,31 @@ test('agents: the reviewer has no edit tools; the planner cannot run commands', 
   assert.match(reviewer.body, /first line is exactly `PASS` or `CHANGES_REQUESTED`/);
   const planner = frontmatter(path.join(PLUGIN, 'agents', 'planner.md'));
   assert.ok(!list(planner.data.tools).includes('Bash') && !list(planner.data.tools).includes('Edit'));
+  assert.match(planner.body, /### T<n>: <title>/, 'planner writes the task headings the ledger parses');
+  assert.match(planner.body, /turns ≈ 25 \+ 12 per task, capped at 150/);
+  const qa = frontmatter(path.join(PLUGIN, 'agents', 'qa.md'));
+  for (const t of ['Edit', 'Write', 'NotebookEdit']) assert.ok(list(qa.data.disallowedTools).includes(t), `qa disallows ${t}`);
+  assert.match(qa.body, /first line is exactly `PASS` or `FAIL`/);
+  assert.match(qa.body, /Calibration examples/);
 });
 
-const SKILLS = { setup: true, doctor: false, brief: true, 'verify-done': false, 'review-loop': true, adopt: true, 'new-app': true };
+test('build skill: the four stop reasons, ledger rulings, capped fix rounds with escalation, never merges', () => {
+  const { body } = frontmatter(path.join(PLUGIN, 'skills', 'build', 'SKILL.md'));
+  assert.match(body, /Only four things stop you/);
+  assert.match(body, /LEDGER ruling <id>/);
+  assert.match(body, /Rounds 3–4:\*\* dispatch a \*\*fresh\*\* harness:implementer with `model: opus`/);
+  assert.match(body, /After round 4 without PASS/);
+  assert.match(body, /harness:qa/);
+  assert.match(body, /mode: final/);
+  assert.match(body, /\*\*Never merge\.\*\*/);
+});
 
-test('skills: exactly the seven BUILD §1 skills', () => {
+const SKILLS = {
+  setup: true, doctor: false, brief: true, 'verify-done': false, 'review-loop': true, adopt: true, 'new-app': true,
+  build: false, 'systematic-debugging': false, learn: true,
+};
+
+test('skills: exactly the ten harness skills', () => {
   assert.deepEqual(fs.readdirSync(path.join(PLUGIN, 'skills')).sort(), Object.keys(SKILLS).sort());
 });
 
@@ -82,6 +103,9 @@ test('brief skill: never implements, hands off a /goal that names the proving co
   const goal = body.match(/```\n(\/goal [\s\S]*?)\n```/);
   assert.ok(goal, 'prints a /goal block');
   assert.match(goal[1], /--all` exits 0/, 'names the proving command (LOOP-2)');
+  assert.match(goal[1], /LEDGER> status <id> --check` exits 0/, 'the ledger is the executed done-check (AGT-6)');
+  assert.match(goal[1], /\/harness:build <id>/);
+  assert.match(goal[1], /Never merge/);
   assert.match(goal[1], /TESTDIFF> <BASE>` exits 0/, 'executed "no test file modified" (LOOP-2)');
   assert.match(goal[1], /Stop after <N> turns\.$/, 'turn cap (LOOP-2)');
   assert.ok(goal[1].length < 4000, '/goal condition fits 4,000 chars');

@@ -15,7 +15,7 @@ Scripts: `.claude/hooks/<script>.mjs` if the repo commits it, otherwise `${CLAUD
 ## Gather the criteria
 1. The **Definition of done** section of the repo's `CLAUDE.md`. Each line names who holds it: the file, a hook, CI, or the human.
 2. Every check in `.claude/harness.json`.
-3. If a feature id was given: its entry in `feature_list.json` and the acceptance criteria in its brief.
+3. If a feature id was given: its entry in `feature_list.json` and the acceptance criteria in its brief. If it has a build ledger (`docs/briefs/<id>.ledger.md`), add a row for `node "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mjs" status <id> --check`, plus one row per ruling and parked finding (HUMAN: the reviewer of the PR decides on them).
 
 ## Produce evidence
 - Run `node <check.mjs> --all` once. Each check becomes its own row.

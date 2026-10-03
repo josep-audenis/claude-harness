@@ -22,6 +22,7 @@ Ordered by expected value. Each becomes `experiments/NNN-slug/` when started.
 | E8 | A SessionStart state injection reduces turns spent orienting | hook removed |
 | E9 | Cross-model review (Codex or Gemini) finds issues Claude review misses | second review workflow |
 | E10 | `autoMode.classifyAllShell` costs little latency and blocks nothing legitimate | setting on vs off |
+| E11 | `/harness:build` (task by task, reviewer per task, QA) ships medium features with fewer premature-done and QA failures than v1.0's single implementer, at < 2× the tokens | build skill vs one implementer under `/goal` |
 
 ## Later
 - Package `/build-queue` and other proven workflows into the plugin

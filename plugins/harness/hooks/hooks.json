@@ -1,5 +1,5 @@
 {
-  "description": "harness: session state, Bash gate and log, formatter, Stop gate, notifications (SPEC CTX-5, SEC-5, REC-1, GATE-1..4)",
+  "description": "harness: session state, Bash gate and log, formatter, Stop and implementer SubagentStop gates, notifications (SPEC CTX-5, SEC-5, REC-1, GATE-1..4, GATE-8)",
   "hooks": {
     "SessionStart": [
       {
@@ -33,6 +33,14 @@
     ],
     "Stop": [
       {
+        "hooks": [
+          { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/stop-gate.mjs"], "timeout": 600 }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "harness:implementer|implementer",
         "hooks": [
           { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/stop-gate.mjs"], "timeout": 600 }
         ]

@@ -46,7 +46,11 @@ claude-harness/
       doctor.mjs                  # checks device + current repo against SPEC
       adopt.mjs                   # mechanical half of ADOPT-1/2
       new-app.mjs                 # mechanical half of NEW-1
-    agents/planner.md  test-writer.md  implementer.md  reviewer.md     # AGT-1
+      check.mjs  test-diff.mjs    # run harness.json checks; test files changed since a commit (LOOP-2)
+      prove.mjs  floor.mjs        # GATE-6 proof; device-floor merge rules
+      ledger.mjs                  # build ledger, SPEC §6.8 (AGT-6, REC-4)
+      qa-server.mjs               # start/stop the app for QA (AGT-7)
+    agents/planner.md  test-writer.md  implementer.md  reviewer.md  qa.md   # AGT-1
     skills/
       setup/SKILL.md              # runs setup.mjs, explains changes, suggests /auto-mode-setup
       doctor/SKILL.md             # runs doctor.mjs, explains failures, offers fixes
@@ -55,6 +59,9 @@ claude-harness/
       review-loop/SKILL.md        # REV-5
       adopt/SKILL.md              # ADOPT-1..4 (judgement half)
       new-app/SKILL.md            # NEW-1
+      build/SKILL.md              # AGT-6: task-by-task autonomous build
+      systematic-debugging/SKILL.md   # AGT-8
+      learn/SKILL.md              # AGT-9
     workflows/.gitkeep            # AGT-4: saved workflows land here later
     machine/
       settings.floor.json         # merged into ~/.claude/settings.json
@@ -111,6 +118,7 @@ These cover only what SPEC.md doesn't already specify.
 | PostToolUse | `Bash` | `log-bash.mjs` | `async: true`, if verified |
 | PostToolUse | `Edit\|Write` | `format-changed.mjs` | |
 | Stop | | `stop-gate.mjs` | `timeout: 600` |
+| SubagentStop | `harness:implementer|implementer` | `stop-gate.mjs` | GATE-8: checks the subagent's cwd (its worktree) |
 | Notification | | `notify.mjs` | |
 
 All entries use exec form. Confirm the exec-form field names (`command` plus `args`) in the hooks reference.

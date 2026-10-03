@@ -1,8 +1,8 @@
 ---
 name: brief
-description: Turn a one-line feature request into a brief, a feature_list entry, failing tests (shown red) and a /goal condition, without implementing anything. Use when the user runs /harness:brief or asks to plan or spec a feature before building it.
+description: Turn a feature request (one line, or a big feature like a dashboard) into a brief with an ordered task list, a feature_list entry, failing tests (shown red) and a /goal that runs /harness:build unattended. Implements nothing. Use when the user runs /harness:brief or asks to plan or spec a feature before building it.
 disable-model-invocation: true
-argument-hint: "<one-line feature request>"
+argument-hint: "<feature request>"
 ---
 
 # /harness:brief
@@ -11,7 +11,10 @@ Request: `$ARGUMENTS`
 
 You produce a contract, not code (SPEC AGT-2). **Never implement the feature in this skill**, not even a stub. The maker and the checker are different agents (P3).
 
-Scripts: `.claude/hooks/<script>.mjs` when the repo commits it, otherwise `${CLAUDE_PLUGIN_ROOT}/scripts/<script>.mjs`. Below, `CHECK` means that path for `check.mjs` and `TESTDIFF` for `test-diff.mjs`.
+Scripts: `.claude/hooks/<script>.mjs` when the repo commits it, otherwise `${CLAUDE_PLUGIN_ROOT}/scripts/<script>.mjs`. Below:
+- `CHECK` means that path for `check.mjs`;
+- `TESTDIFF` for `test-diff.mjs`;
+- `LEDGER` for `${CLAUDE_PLUGIN_ROOT}/scripts/ledger.mjs`.
 
 ## 1. Preconditions
 - Run `git status --porcelain`. If anything is uncommitted, stop and ask the user to commit or stash.
@@ -19,7 +22,12 @@ Scripts: `.claude/hooks/<script>.mjs` when the repo commits it, otherwise `${CLA
 - If on the default branch, `git switch -c feat/<id>`. Otherwise stay on the current branch and say which one.
 
 ## 2. Brief
-Delegate to the **harness:planner** subagent with the request and the id. When it returns, read `docs/briefs/<id>.md` yourself. Show the user its path, the summary and any **Open questions**. If an open question would change the acceptance criteria, ask the user before going on.
+Delegate to the **harness:planner** subagent with the request and the id. When it returns, read `docs/briefs/<id>.md` yourself and show the user:
+- its path, its size (small, medium or large) and its task count;
+- the summary;
+- every **Open question**.
+
+The build will run unattended, so **every open question must be answered now**. Ask the user, then make sure the answers are written into the brief (edit the brief yourself; it's prose, not code). Make sure the brief has a `## Tasks` section with `### T1: …` headings: the build reads them.
 
 ## 3. Feature entry
 Append to `feature_list.json` (create it as `[]` if missing):
@@ -27,7 +35,7 @@ Append to `feature_list.json` (create it as `[]` if missing):
 Never edit or reorder other entries.
 
 ## 4. Failing tests
-Delegate to the **harness:test-writer** subagent with the brief path. Then verify it yourself, because the maker of a check doesn't grade it either:
+Delegate to the **harness:test-writer** subagent with the brief path. It writes the tests for **all** acceptance criteria, which the tasks then turn green one by one. Then verify it yourself, because the maker of a check doesn't grade it either:
 - run the test command it reported, and paste the output: the new tests must be red, for the reason the brief describes;
 - `git status --porcelain`: every new or changed file must be a test or fixture, the brief, or `feature_list.json`. Anything else is a violation: stop and report it. Don't commit it.
 
@@ -39,7 +47,13 @@ Only those files: the Stop gate treats a clean `brief(...)` commit of brief, fea
 Print, filling in every `<…>` (N comes from the brief's Budget):
 
 ```
-/goal Feature <id> (docs/briefs/<id>.md) is done: `node <CHECK> --all` exits 0 with its output shown in this session; every acceptance criterion command in the brief was run in this session with its output shown; feature_list.json has "passes": true for <id>; `node <TESTDIFF> <BASE>` exits 0 with its output shown; and the harness:reviewer subagent returned PASS for <BASE>..HEAD. Delegate the work to the harness:implementer subagent, merge its worktree branch with `git merge --ff-only`, then ask harness:reviewer. Never merge to main. Stop after <N> turns.
+/goal Feature <id> (docs/briefs/<id>.md) is built: `node <LEDGER> status <id> --check` exits 0 with its output shown (every task done or parked, QA PASS or n/a, final review PASS); `node <CHECK> --all` exits 0 with its output shown; `node <TESTDIFF> <BASE>` exits 0 with its output shown; and a draft PR exists for the branch. Work by running /harness:build <id>; resume it if the session was compacted. Make rulings instead of asking, per /harness:build. Never merge. Stop after <N> turns.
 ```
 
-Then tell the user: read the brief now, because it's where judgement matters most (P6). Then paste the `/goal` here or in a background session (`claude agents`).
+Then tell the user:
+- Read the brief now: it's where judgement matters most (P6).
+- For an unattended run:
+  - use **auto** permission mode;
+  - keep the machine awake (or use a background session from `claude agents`);
+  - remember that Pro usage windows can pause a long run.
+- Then paste the `/goal`.

@@ -116,6 +116,53 @@ test('stop-gate: committed copy still gates when CLAUDE_PLUGIN_ROOT leaks into i
   assert.equal(r.code, 2, r.stderr);
 });
 
+// GATE-8: the implementer subagent can't finish red. The hook input's cwd is the subagent's worktree.
+function worktreeRepo(check) {
+  const main = makeRepo(contract(check));
+  const wt = path.join(path.dirname(main), `${path.basename(main)}-wt`);
+  sh('git', ['worktree', 'add', '-q', '-b', 'impl-1', wt], main);
+  return { main, wt };
+}
+const subagentStop = (wt, main, env = {}) =>
+  runScript(GATE, { hook_event_name: 'SubagentStop', cwd: wt, agent_type: 'harness:implementer', stop_hook_active: false }, {
+    cwd: main,
+    env: { CLAUDE_PROJECT_DIR: main, ...env },
+  });
+
+test('stop-gate (SubagentStop): red checks in the worktree block the implementer', () => {
+  const { main, wt } = worktreeRepo(FAIL_CMD);
+  write(wt, 'work.txt', 'x');
+  const r = subagentStop(wt, main);
+  assert.equal(r.code, 2, r.stderr);
+  assert.match(r.stderr, /^Not done:/);
+  assert.match(r.stderr, /You are the implementer/);
+  assert.equal(stop(main).code, 0, 'the main checkout is clean: the main Stop gate skips');
+});
+
+test('stop-gate (SubagentStop): green checks in the worktree let it finish', () => {
+  const { main, wt } = worktreeRepo(PASS_CMD);
+  write(wt, 'work.txt', 'x');
+  assert.equal(subagentStop(wt, main).code, 0);
+});
+
+test('stop-gate (SubagentStop): never defers to a committed copy (the repo copy only registers Stop)', () => {
+  const { main, wt } = worktreeRepo(FAIL_CMD);
+  commitGateCopy(wt);
+  write(wt, 'work.txt', 'x');
+  assert.equal(subagentStop(wt, main, { CLAUDE_PLUGIN_ROOT: PLUGIN }).code, 2);
+});
+
+test('stop-gate: checks see which gate runs them (HARNESS_GATE_EVENT)', () => {
+  const probe = 'node -e "require(\'fs\').appendFileSync(\'events.txt\', process.env.HARNESS_GATE_EVENT + \'\\n\'); process.exit(1)"';
+  const { main, wt } = worktreeRepo(probe);
+  write(wt, 'work.txt', 'x');
+  subagentStop(wt, main);
+  write(main, 'dirty.txt', 'x');
+  stop(main);
+  assert.equal(fs.readFileSync(path.join(wt, 'events.txt'), 'utf8').trim(), 'SubagentStop');
+  assert.equal(fs.readFileSync(path.join(main, 'events.txt'), 'utf8').trim(), 'Stop');
+});
+
 test('stop-gate: harness.json with no checks → exit 0', () => {
   const dir = makeRepo({ '.claude/harness.json': '{"version":1,"check":[]}' });
   write(dir, 'dirty.txt', 'x');

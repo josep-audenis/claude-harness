@@ -14,3 +14,4 @@ One file per design decision: `NNNN-short-title.md`, numbered in order and never
 | 0008 | Eval fixtures are dependency-free, with hidden verifiers and reference solutions | Accepted |
 | 0009 | Experiment variants are generated from the baseline, not committed copies | Accepted |
 | 0010 | App template pins TypeScript 5.9 and ESLint 9, and uses better-sqlite3's bundled binaries | Accepted |
+| 0011 | Big features are built task by task, with a ledger, by an orchestrating skill | Accepted |

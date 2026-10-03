@@ -17,7 +17,7 @@ Repeat for at most **3 rounds**:
    - Summary: `gh pr view <n> --comments`. The latest review comment starts with PASS or CHANGES_REQUESTED.
    - Inline: `gh api repos/{owner}/{repo}/pulls/<n>/comments`. Use `line` and `original_line`, because a finding on a line a later push moved loses its anchor. Read the original line too.
    - Red CI: `gh run view <run-id> --log-failed`.
-4. **Weigh every finding.** Reproduce it before you change anything: the reviewer read the code without running it.
+4. **Weigh every finding.** Reproduce it before you change anything: the reviewer read the code without running it. For a failing check or a bug, use the systematic-debugging skill: root cause first.
    - **Real**: fix it with the smallest diff. For a behaviour bug, add a failing test first. Run the harness checks, commit, push.
    - **Not real, or out of scope**: reply with the reason and the evidence. Inline: `gh api repos/{owner}/{repo}/pulls/<n>/comments/<id>/replies -f body="…"`. Summary: `gh pr comment <n> --body "…"`.
 5. **Stop** when the latest review is PASS, CI is green, and every finding has a fix commit or a reply. Otherwise push and start the next round.

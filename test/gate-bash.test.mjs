@@ -2,8 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { SCRIPTS, runScript } from './helpers.mjs';
-import { check } from '../plugins/harness/scripts/gate-bash.mjs';
+import { SCRIPTS, runScript, tmpdir, write } from './helpers.mjs';
+import { check, checkRepoRules } from '../plugins/harness/scripts/gate-bash.mjs';
 
 const GATE = path.join(SCRIPTS, 'gate-bash.mjs');
 const run = (command) => runScript(GATE, { tool_name: 'Bash', tool_input: { command } });
@@ -63,6 +63,25 @@ const denied = [
 for (const command of denied) {
   test(`gate-bash denies: ${command}`, () => assert.ok(check(command), `expected a reason for ${command}`));
 }
+
+test('gate-bash: repo bashDeny rules from .claude/harness.json (added by /harness:learn)', () => {
+  const dir = tmpdir('bashdeny');
+  write(dir, '.claude/harness.json', JSON.stringify({
+    version: 1,
+    check: ['npm test'],
+    bashDeny: [
+      { pattern: '\\bprisma\\s+migrate\\s+reset\\b', reason: 'wipes the dev database; use db:reset-safe' },
+      { pattern: '([', reason: 'invalid regex is ignored' },
+      { reason: 'no pattern is ignored' },
+    ],
+  }));
+  const run = (command) => runScript(GATE, { tool_name: 'Bash', tool_input: { command } }, { cwd: dir, env: { CLAUDE_PROJECT_DIR: dir } });
+  const blocked = run('npx Prisma migrate reset --force');
+  assert.equal(blocked.code, 2, blocked.stderr);
+  assert.match(blocked.stderr, /repo rule: wipes the dev database; use db:reset-safe/);
+  assert.equal(run('npx prisma migrate dev').code, 0);
+  assert.equal(checkRepoRules('anything', tmpdir('no-config')), null);
+});
 
 const allowed = [
   'git push origin main',

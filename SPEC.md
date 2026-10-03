@@ -1,6 +1,6 @@
 # Harness Specification
 
-**Status:** v1.0, 2026-10-02 · **Owner:** Josep · **Applies to:** current Claude Code on macOS, Linux, Windows (feature version floors are in `docs/knowledge/claude-code-primitives.md`)
+**Status:** v1.1, 2026-10-03 · **Owner:** Josep · **Applies to:** current Claude Code on macOS, Linux, Windows (feature version floors are in `docs/knowledge/claude-code-primitives.md`)
 
 This document defines what must be true of the development harness: on every device, in every repo, and for every loop. It describes requirements, not implementation. `BUILD.md` says how to build it, and `/harness:doctor` checks a device and a repo against it.
 
@@ -72,35 +72,47 @@ Plugins can't set permissions, sandbox, `defaultMode` or `env`: a plugin's `sett
 - **CTX-2** Every harnessed repo MUST have a `CLAUDE.md` of 45 lines or fewer, containing only what the repo can't say for itself: commands, gotchas, reasons, conventions, "working across sessions" and a definition of done that names who enforces each line. No directory tours, dependency lists or architecture overviews.
 - **CTX-3** Every harnessed repo MUST have `.claude/harness.json` (§6.2). It is the single executed contract, used by the Stop gate, CI and routines.
 - **CTX-4** Every harnessed repo MUST have `feature_list.json` (§6.3) and `progress.md`. Agents flip `passes` only after verifying a feature's steps end to end, and never delete or reword entries.
-- **CTX-5** A SessionStart hook (startup, resume, compact) MUST inject the tail of `progress.md`, the last 8 commits and the count of open features, when those files exist.
+- **CTX-5** A SessionStart hook (startup, resume, compact) MUST inject the tail of `progress.md`, the last 8 commits and the count of open features, when those files exist. During a build it MUST also inject the ledger summary (§6.8) for the current `feat/<id>` branch: progress, next task, latest rulings.
 - **CTX-6** Conventions that apply to part of the tree SHOULD use `.claude/rules/*.md` with `paths:` or a nested CLAUDE.md, not the root file.
 - **CTX-7** `AGENTS.md` SHOULD exist and point to `CLAUDE.md`, so non-Claude reviewers read the same contract.
 
 ### GATE: Enforcement
 
 - **GATE-1** A Stop hook MUST block the turn (exit 2) while any `check` command in `.claude/harness.json` fails. On stderr it MUST print `Not done:`, the failing command, the last 40 lines of its output and "Fix the cause, not the test."
-- **GATE-2** The Stop gate MUST skip (exit 0) when the repo has no `.claude/harness.json`, or when the tree is clean with no untracked files and no commits ahead of the default branch, so plain Q&A is never gated.
+- **GATE-2** The Stop gate MUST skip (exit 0) when the repo has no `.claude/harness.json`, or when the tree is clean with no untracked files and no commits ahead of the default branch, so plain Q&A is never gated. It MUST also skip when the tree is clean and HEAD is a `brief(<id>)` commit that touches only `docs/briefs/*.md`, `feature_list.json` and test files: those red tests are intended (AGT-2), and any later edit or commit re-arms the gate.
 - **GATE-3** When a repo commits its own `.claude/hooks/stop-gate.mjs`, the plugin's Stop gate MUST defer to it (exit 0) so the gate runs once. The same applies to the formatter.
 - **GATE-4** A PostToolUse hook on `Edit|Write` SHOULD format only the edited file. It MUST exit 0 even when no formatter is installed.
 - **GATE-5** Hooks MUST block only with exit code 2. Exit 1 is a non-blocking error and MUST NOT be used to block.
 - **GATE-6** Every gate MUST be proven before it's trusted: break one check, confirm the gate blocks, revert, confirm it passes. Doctor and `/harness:adopt` both do this.
 - **GATE-7** Claude Code overrides a Stop hook after 8 consecutive blocks without progress. At that point the user escalates to a different approach or a stronger model; the cap MUST NOT be raised by default.
+- **GATE-8** A SubagentStop hook MUST hold the `implementer` subagent like GATE-1 holds the session: block (exit 2) while any `check` fails, evaluated in the subagent's own working directory (its worktree), never deferring to a committed copy. Doctor `--live` MUST prove it in a real session.
 
 ### AGT: Agents and orchestration
 
-- **AGT-1** The plugin MUST provide four agents with these roles, tools and models:
+- **AGT-1** The plugin MUST provide five agents with these roles, tools and models:
 
   | Agent | Job | Tools | Model |
   |---|---|---|---|
   | `planner` | writes briefs (§6.4), never code | Read, Grep, Glob, Write | opus |
   | `test-writer` | writes tests from the brief that fail on today's code | Read, Grep, Glob, Write, Edit, Bash | sonnet |
   | `implementer` | builds inside the scope fence, never edits tests | Read, Edit, Write, Bash, Grep, Glob; worktree isolation | sonnet |
-  | `reviewer` | PASS or CHANGES_REQUESTED; checks for test tampering and scope | Read, Grep, Glob, Bash (no edit tools) | sonnet |
+  | `reviewer` | PASS or CHANGES_REQUESTED, per task or for the whole branch; checks for test tampering and scope | Read, Grep, Glob, Bash (no edit tools) | sonnet |
+  | `qa` | PASS or FAIL from driving the running app in a browser against the brief, with a calibrated rubric | Read, Grep, Glob, Bash (no edit tools) | sonnet |
 
 - **AGT-2** `/harness:brief` MUST turn a one-line request into: a brief, a feature_list entry, failing tests (output shown), and a `/goal` condition (§6.5). It MUST NOT implement anything.
 - **AGT-3** `/harness:verify-done` MUST print one row per definition-of-done criterion with its evidence, quote failures verbatim, and never report done while any row is red.
 - **AGT-4** For many independent items, use a dynamic workflow (say "use a workflow" or `ultracode:`). Good runs SHOULD be saved and moved into `plugins/harness/workflows/` so every device gets them.
 - **AGT-5** Agent teams MAY be used for debugging with competing hypotheses or cross-layer research. They MUST NOT be enabled in the device floor.
+- **AGT-6** `/harness:build <id>` MUST execute a brief's tasks (§6.4) in order without asking the human:
+  - a fresh `implementer` per task, merged back; then a task-scoped `reviewer`;
+  - at most 4 fix rounds per task, rounds 3–4 with a fresh implementer on a stronger model; then park non-load-bearing findings or stop;
+  - after the last task, `qa` (when the app is runnable) and a final whole-branch review;
+  - finish with a draft PR, and never merge.
+
+  Every decision it would otherwise ask about MUST be recorded as a ruling in the ledger (§6.8). It MAY stop only for an irreversible or destructive action, a security-sensitive action, an outward side effect beyond pushing the feature branch or opening a draft PR, or a plan so broken that every path is a guess, and then MUST write `BLOCKED.md`.
+- **AGT-7** The `qa` agent MUST start the app from `.claude/harness.json` `init`/`health` through `qa-server.mjs` (which leaves no process behind and writes nothing into the repo), exercise every acceptance criterion in a real browser, and report rubric scores with evidence. Without `init`/`health`, QA is "n/a".
+- **AGT-8** A `systematic-debugging` skill MUST require a root cause before any fix: reproduce, locate, test one hypothesis at a time, failing test first; after two failed attempts, `BLOCKED.md`.
+- **AGT-9** `/harness:learn` MUST route a repeated mistake to the lowest level that holds it, per P2: a contract line, a path rule, a skill, or an executed rule. Bash rules go to `.claude/harness.json` `bashDeny`, which the PreToolUse gate MUST enforce. It shows the change and asks before committing on a branch.
 
 ### LOOP: Loops
 
@@ -139,6 +151,7 @@ Plugins can't set permissions, sandbox, `defaultMode` or `env`: a plugin's `sett
 - **REC-1** A PostToolUse hook on Bash MUST append one JSON line per command (time, session, agent, cwd, command) to `~/.claude/logs/bash.jsonl`.
 - **REC-2** Each session's work MUST end with a commit and a three-line `progress.md` entry.
 - **REC-3** Briefs live in `docs/briefs/<id>.md` and are committed.
+- **REC-4** A build's ledger lives in `docs/briefs/<id>.ledger.md` and is committed whenever it changes, so a build survives compaction and can be resumed; the draft PR carries its rulings and parked findings.
 
 ### COST: Budget
 
@@ -212,6 +225,8 @@ CTX-2 · CTX-3 · CTX-4 · CTX-7 · GATE-1 (proven) · committed `stop-gate.mjs`
 }
 ```
 
+Optional `"bashDeny": [{ "pattern": "<regex>", "reason": "<what to do instead>" }]` adds repo-specific Bash rules, enforced by the PreToolUse gate (AGT-9).
+
 `check` runs in order, each through the platform shell, and stops at the first failure. It must be fast (under about 90 seconds) and need no network. `init`, `health` and `e2e` are optional.
 
 ### 6.3 `feature_list.json` entry
@@ -228,16 +243,25 @@ Sections, in this order:
 - **Goal**
 - **Non-goals**
 - **Scope fence** (the paths allowed to change)
-- **Acceptance criteria**, each written as a command plus its expected output
+- **Design**: where each invariant lives, at every layer it must hold
+- **Acceptance criteria**, each written as a command plus its expected output (or, for UI, a user action plus what the user sees)
 - **Checks to add**: functional, static, performance or evidence
-- **Budget**: turns and a consecutive-failure cap
+- **Tasks**: ordered, one `### T<n>: <title>` heading each, with Files, Makes green, Verify, Done when. Sized to the feature: small 1–3, medium 4–8, large 9–20 under milestones; more than 20 means two features
+- **Budget**: turns (≈ 25 + 12 per task, capped at 150), a consecutive-failure cap, and at most 4 review rounds per task
+- **Open questions**, if any. All must be answered before the build starts
 
 ### 6.5 `/goal` condition template
 
 ```
-/goal <feature id> has "passes": true in feature_list.json, every harness.json check exits 0 with output shown,
-the feature's steps were verified in this session, and no test file outside this feature changed. Stop after <N> turns.
+/goal Feature <id> (docs/briefs/<id>.md) is built: `ledger.mjs status <id> --check` exits 0 with its output shown
+(every task done or parked, QA PASS or n/a, final review PASS); `check.mjs --all` exits 0 with its output shown;
+`test-diff.mjs <brief commit>` exits 0 with its output shown; and a draft PR exists for the branch.
+Work by running /harness:build <id>; resume it if the session was compacted. Make rulings instead of asking.
+Never merge. Stop after <N> turns.
 ```
+
+For a change too small for a ledger, the v1.0 form remains valid: the feature's `passes`, every check exiting 0 with output
+shown, the steps verified in this session, no test file changed, and a turn cap.
 
 ### 6.6 `loop.md`
 
@@ -255,12 +279,39 @@ Never merge. Never push to main.
 You are the night shift for this repository.
 1. List open issues labelled `agent-ready`. Pick ONE: highest severity first, then oldest. Say which and why before touching code.
 2. Run its Reproduce block. If it no longer reproduces, comment with the evidence and stop.
-3. Add a failing test that captures the defect, then fix it on a new branch. Every harness.json check must pass.
+3. Find the root cause with the systematic-debugging skill. Add a failing test that captures the defect, then fix it on a new branch. Every harness.json check must pass.
    Never touch paths listed in CODEOWNERS.
 4. Ask the reviewer subagent to review. Address every BLOCKER.
 5. Open a PR that says "Fixes #<n>" and lists what you verified. Never merge.
 6. Append one line to NIGHT-LOG.md. Wait for any subagent you started before ending.
 ```
+
+### 6.8 Build ledger (`docs/briefs/<id>.ledger.md`)
+
+Written only through `ledger.mjs` (`init | status [--json] [--check] | set | ruling | park | qa | final`):
+
+```
+# Ledger: <id>
+
+Brief: docs/briefs/<id>.md · Base: <brief commit> · Started: <date>
+
+## Tasks
+| Task | Status | Rounds | Review | Commits | Title |      status: todo | doing | done | parked | blocked
+
+## QA
+- PASS | FAIL | n/a … (date)
+
+## Final review
+- PASS | CHANGES_REQUESTED … (date)
+
+## Rulings
+- Ruling: <what was decided> — <why> — <what it costs if wrong>
+
+## Parked findings
+- T<n>: <finding> — <why parked>
+```
+
+Complete means: every task done or parked, QA PASS or n/a, final review PASS.
 
 ## 7. Operating rhythm (not enforced; for reference)
 
