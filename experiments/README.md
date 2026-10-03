@@ -7,7 +7,8 @@ experiments/
   _template/README.md     # copy this
   NNN-slug/
     README.md             # hypothesis, variant, tasks, results, decision
-    variant/              # plugin dir copied from plugins/harness, one change applied
+    make-variant.mjs      # optional: generates variant/ from plugins/harness with the one change applied
+    variant/              # plugin dir: plugins/harness with one change (gitignored when generated)
     results.md            # output of evals/compare.mjs
 ```
 
@@ -15,4 +16,4 @@ experiments/
 
 | # | Hypothesis | Status | Decision |
 |---|---|---|---|
-| — | none yet; candidates are in ../ROADMAP.md | | |
+| [001](001-stop-gate/README.md) | The Stop gate cuts premature-done to <5% at <20% more tokens (ROADMAP E1) | planned | pending |

@@ -166,6 +166,10 @@ The skill body says: run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.mjs" --home 
   - `refactor-split-file`'s 611-line module and `golden.json` came from a one-off generator; the outputs are committed.
 - 2026-10-03 **Result fields** checked against the Agent SDK `SDKResultMessage` type: `num_turns`, `total_cost_usd`, `usage`, `duration_ms`, `result`, `subtype`, `is_error`. Real-run parsing is still unproven until the first real run.
 - 2026-10-03 **Mutation check of phase 8**: disabling tamper detection turned 2 lab tests red; making `claimsDone` always false turned 4 red.
+- 2026-10-03 **Experiment 001 (phase 9)**:
+  - The variant is **generated** by `experiments/001-stop-gate/make-variant.mjs` (gitignored `variant/`, with `VARIANT.json` recording the baseline version and commit), not committed as a copy. This guarantees the one-change rule against whatever baseline is run, and avoids a second copy of the plugin drifting. A test proves the only differing file is `hooks/hooks.json`, minus `Stop`.
+  - The cost estimate is given in tokens and wall clock, with a pilot that measures `costUsd`, rather than a dollar figure from memory.
+  - The hypothesis is judged excluding `premature-done-trap`, which the gate can't see by design (P6); that task is kept as a control.
 - 2026-10-03 **plugin.json created in phase 3** (BUILD puts it in phase 7) because setup records the plugin version.
 - 2026-10-03 **Floor deny `Read(**/.env.*)`** also blocks `.env.example`. It's kept because SEC-1 requires it; Claude can still read examples if the user pastes them or renames them, e.g. to `env.example`.
 - 2026-10-03 **Mutation check of phase 3**: making the floor merge overwrite existing scalars turned the SEC-2 setup test red.
